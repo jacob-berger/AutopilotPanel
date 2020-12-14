@@ -31,7 +31,6 @@ int lastVerticalButton = 1;
 //??
 //??
 
-long int value = 0;
 SerialTransfer myTransfer;
 
 void setup() {
@@ -54,28 +53,58 @@ void loop() {
       
       myTransfer.packet.txBuff[i] = received[i];
     }
-    
-    value += received[3];
-    value << 8;
-    value += received[2];
-    value << 8;
-    value += received[1];
-    value << 8;
-    value += received[0];
 
-    value += 10;
+    long int selectedSpeed, selectedHeading, selectedAltitude, selectedVertical = 0;
+
+    for (int ix = 3; ix >= 0; ix--) {
+      if (ix != 0) {
+        selectedSpeed += received[ix];
+        selectedSpeed << 8;
+      } else {
+        selectedSpeed += received[ix];
+      }
+    }
+
+    selectedSpeed += 10; //changing value to ensure working
 
     union {
       uint16_t returnedVal;
       byte myData[4];
-    } data;
-    data.returnedVal = value;
+    } speedByte;
+    speedByte.returnedVal = selectedSpeed;
 
     for (int ix = 0; ix < 4; ix++) {
-      myTransfer.packet.txBuff[ix] = data.myData[ix];
+      myTransfer.packet.txBuff[ix] = speedByte.myData[ix];
+    }
+
+    /////////////////////////////////////////
+
+    for (int ix = 3; ix >= 0; ix--) {
+      if (ix != 0) {
+        selectedHeading += received[ix + 4];
+        selectedHeading << 8;
+      } else {
+        selectedHeading += received[ix + 4];
+      }
+    }
+
+    selectedHeading += 10; //changing value to ensure working
+
+    union {
+      uint16_t returnedVal;
+      byte myData[4];
+    } headingByte;
+    headingByte.returnedVal = selectedHeading;
+
+    for (int ix = 4; ix < 8; ix++) {
+      myTransfer.packet.txBuff[ix] = headingByte.myData[ix - 4];
     }
     
     myTransfer.sendData(myTransfer.bytesRead);
+
+
+
+    
     unsigned char result = speedRotary.process();
     int pressed = digitalRead(4);
     if (result == DIR_CW) {
@@ -97,8 +126,6 @@ void loop() {
     for (int ix = 0; ix < 16; ix++) {
       Serial.println(received[ix]);
     }
-
-    Serial.println(value);
   }
 }
 
