@@ -31,8 +31,12 @@ int lastVerticalButton = 1;
 //??
 //??
 
+long int value = 0;
+SerialTransfer myTransfer;
+
 void setup() {
   Serial.begin(9600);
+  myTransfer.begin(Serial);
 //  Gamepad.begin();
   pinMode(4, INPUT_PULLUP);
   pinMode(7, INPUT_PULLUP);
@@ -43,34 +47,59 @@ Serial.print("Hello world\n");
 }
 
 void loop() {
-  unsigned char result = speedRotary.process();
-  int pressed = digitalRead(4);
-  if (result == DIR_CW) {
-//    int currentSpeed = 
-//    Serial.println("CW");
-    //Increment by 1 unit
-//    Gamepad.press(1);
-//    Gamepad.release(1);
-  } else if (result == DIR_CCW) {
-//    Serial.println("CCW");
-//    Gamepad.press(2);
-//    Gamepad.release(2);
-  } else if (pressed == 0) {
-      if (pressed != lastSpeedButton) {
-//        Gamepad.press(3);
-//        Gamepad.release(3);
-//        Serial.println("BUTTON");
+  if (myTransfer.available()) {
+    uint16_t received[16];
+    for (uint16_t i = 0; i < myTransfer.bytesRead; i++) {
+      received[i] = myTransfer.packet.rxBuff[i];
+      
+      myTransfer.packet.txBuff[i] = received[i];
     }
-  }
-  lastSpeedButton = pressed;
-//  Gamepad.write();
-//  Serial.flush();
+    
+    value += received[3];
+    value << 8;
+    value += received[2];
+    value << 8;
+    value += received[1];
+    value << 8;
+    value += received[0];
 
-//  ArrayToInt converter = {1,1,1,1};
-//  int rawData = Serial.read();
-//  Serial.print("RECEIVED: ");
-//  Serial.print(rawData);
-//  delay(1000);
+    value += 10;
+
+    union {
+      uint16_t returnedVal;
+      byte myData[4];
+    } data;
+    data.returnedVal = value;
+
+    for (int ix = 0; ix < 4; ix++) {
+      myTransfer.packet.txBuff[ix] = data.myData[ix];
+    }
+    
+    myTransfer.sendData(myTransfer.bytesRead);
+    unsigned char result = speedRotary.process();
+    int pressed = digitalRead(4);
+    if (result == DIR_CW) {
+      //Increment by 1 unit
+    } else if (result == DIR_CCW) {
+    } else if (pressed == 0) {
+        if (pressed != lastSpeedButton) {
+      }
+    }
+    lastSpeedButton = pressed;
+  //  Gamepad.write();
+  //  Serial.flush();
+  
+  //  ArrayToInt converter = {1,1,1,1};
+  //  int rawData = Serial.read();
+  //  Serial.print("RECEIVED: ");
+  //  Serial.print(rawData);
+    delay(5000);
+    for (int ix = 0; ix < 16; ix++) {
+      Serial.println(received[ix]);
+    }
+
+    Serial.println(value);
+  }
 }
 
 union ArrayToInt {
