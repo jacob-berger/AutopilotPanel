@@ -18,24 +18,31 @@ for p in ports:
 baudrate = 9600
 
 try:
-    ##ard = serial.Serial(port, timeout=5)
     ard = txfer.SerialTransfer(port, baudrate)
     ard.open()
     sleep(2)
-    ##sm = SimConnect()
-    ##ac = AircraftRequests(sm, _time=2000)
+    sm = SimConnect()
+    ac = AircraftRequests(sm, _time=2000)
+
+    prevSpeed = 0
+    speed = 0
+    prevHead = 0
+    heading = 0
+    prevAlt = 0
+    altitude = 0
+    prevVS = 0
+    vertical = 0
 
     x = 0
-    while x < 1:
-    ## commented out for testing    
-    ##    speed = round(ac.get("AUTOPILOT_AIRSPEED_HOLD_VAR"))
-    ##    heading = round(ac.get("AUTOPILOT_HEADING_LOCK_DIR"))
-    ##    altitude = round(ac.get("AUTOPILOT_ALTITUDE_LOCK_VAR"))
-    ##    vertical = round(ac.get("AUTOPILOT_VERTICAL_HOLD_VAR"))
-        speed = 400
-        heading = 50
-        altitude = 450
-        vertical = 5
+    while 1:
+        speed = round(ac.get("AUTOPILOT_AIRSPEED_HOLD_VAR"))
+        heading = round(ac.get("AUTOPILOT_HEADING_LOCK_DIR"))
+        altitude = round(ac.get("AUTOPILOT_ALTITUDE_LOCK_VAR"))
+        vertical = round(ac.get("AUTOPILOT_VERTICAL_HOLD_VAR"))
+##        speed = 400
+##        heading = 50
+##        altitude = 450
+##        vertical = 5
 
         print("Speed: ")
         print(speed)
@@ -47,16 +54,17 @@ try:
         print(vertical)
         print()
 
-        speedHigh = (speed >> 8) & 0xff
-        speedLow = speed & 0xff
-
-        print(speedHigh)
-        print(speedLow)
+        if speed > 256:
+            speedHigh = (speed >> 8) & 0xff
+            speedLow = speed & 0xff
+        else:
+            speedHigh = 0
+            speedLow = speed
         
-        testArray = [speedHigh, speedLow, heading, altitude, vertical]
+        simData = [speedHigh, speedLow, heading, altitude, vertical]
 
         send_size = 0
-        list_size = ard.tx_obj(testArray)
+        list_size = ard.tx_obj(simData)
         
         send_size += list_size
         ard.send(send_size)
@@ -71,44 +79,13 @@ try:
                     print('ERROR: STOP_BYTE_ERROR')
                 else:
                     print('ERROR: {}'.format(ard.status))
-        received = ard.rx_obj(obj_type=type(testArray), obj_byte_size = send_size, list_format='i')
-        print("Received: ")
-        print(received)
-        x = x + 1
+##        received = ard.rx_obj(obj_type=type(testArray), obj_byte_size = send_size, list_format='i')
+##        print("Received: ")
+##        print(received)
+##        x = x + 1
 
     ard.close()
-    ##end of printing
-    ##ard.write(array.to_bytes)
-    ##sleep(5)
-    ##
-    ##returned = ard.read()
-    ##print(returned)
 
-
-    ##print("Set speed is: "),
-    ##print(speed)
-    ##
-    ##x = 0
-    ##while x < 20:
-    ##    rawData = ard.read()
-    ##    data = int.from_bytes(rawData, "little")
-    ##    print(data)
-    ##    if (data == 2):
-    ##        speed = speed + 1
-    ##        print("RIGHT")
-    ##        print("New set airspeed is: "),
-    ##        print(speed)
-    ##    elif (data == 1):
-    ##        speed = speed - 1
-    ##        print("LEFT")
-    ##        print("New set airspeed is: "),
-    ##        print(speed)
-    ##    elif (data == 3):
-    ##        print("BUTTON")
-    ##        print("Airspeed hold should be set")
-    ##
-    ##    ac.set("AUTOPILOT_AIRSPEED_HOLD_VAR", speed)
-    ##    x += 1
 except KeyboardInterrupt:
     try:
         ard.close()
