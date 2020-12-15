@@ -3,6 +3,7 @@ import serial
 import serial.tools.list_ports
 from time import sleep
 from pySerialTransfer import pySerialTransfer as txfer
+import numpy as np
 
 ports = list(serial.tools.list_ports.comports())
 
@@ -31,9 +32,9 @@ try:
     ##    heading = round(ac.get("AUTOPILOT_HEADING_LOCK_DIR"))
     ##    altitude = round(ac.get("AUTOPILOT_ALTITUDE_LOCK_VAR"))
     ##    vertical = round(ac.get("AUTOPILOT_VERTICAL_HOLD_VAR"))
-        speed = 100
+        speed = 400
         heading = 50
-        altitude = 3000
+        altitude = 450
         vertical = 5
 
         print("Speed: ")
@@ -45,11 +46,15 @@ try:
         print("V/S: ")
         print(vertical)
         print()
-        array = (speed.to_bytes(16, 'little'), heading.to_bytes(16, 'little'), altitude.to_bytes(16, 'little')
-    , vertical.to_bytes(16, 'little'))
-##        print(array)
-    ##    bArray = bytearray(array)
-        testArray = [speed, heading, altitude, vertical]
+
+        speedHigh = (speed >> 8) & 0xff
+        speedLow = speed & 0xff
+
+        print(speedHigh)
+        print(speedLow)
+        
+        testArray = [speedHigh, speedLow, heading, altitude, vertical]
+
         send_size = 0
         list_size = ard.tx_obj(testArray)
         
