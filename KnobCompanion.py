@@ -33,8 +33,8 @@ try:
     ard = txfer.SerialTransfer(port, baudrate)
     ard.open()
     sleep(2)
-    sm = SimConnect()
-    ac = AircraftRequests(sm, _time=2000)
+##    sm = SimConnect()
+##    ac = AircraftRequests(sm, _time=2000)
 
     prevSpeed = 0
     speed = 0
@@ -47,14 +47,14 @@ try:
 
     x = 0
     while 1:
-        speed = round(ac.get("AUTOPILOT_AIRSPEED_HOLD_VAR"))
-        heading = round(ac.get("AUTOPILOT_HEADING_LOCK_DIR"))
-        altitude = round(ac.get("AUTOPILOT_ALTITUDE_LOCK_VAR"))
-        vertical = round(ac.get("AUTOPILOT_VERTICAL_HOLD_VAR"))
-##        speed = 400
-##        heading = 50
-##        altitude = 450
-##        vertical = 5
+##        speed = round(ac.get("AUTOPILOT_AIRSPEED_HOLD_VAR"))
+##        heading = round(ac.get("AUTOPILOT_HEADING_LOCK_DIR"))
+##        altitude = round(ac.get("AUTOPILOT_ALTITUDE_LOCK_VAR"))
+##        vertical = round(ac.get("AUTOPILOT_VERTICAL_HOLD_VAR"))
+        speed = 8000
+        heading = 0
+        altitude = 0
+        vertical = 0
 
         print("Speed: ")
         print(speed)
@@ -65,13 +65,6 @@ try:
         print("V/S: ")
         print(vertical)
         print()
-
-##        if speed > 256:
-##            speedHigh = (speed >> 8) & 0xff
-##            speedLow = speed & 0xff
-##        else:
-##            speedHigh = 0
-##            speedLow = speed
 
         speedBytes = split(speed)
         speedHigh = speedBytes[0]
