@@ -52,9 +52,9 @@ try:
 ##        altitude = round(ac.get("AUTOPILOT_ALTITUDE_LOCK_VAR"))
 ##        vertical = round(ac.get("AUTOPILOT_VERTICAL_HOLD_VAR"))
         speed = 8000
-        heading = 0
-        altitude = 0
-        vertical = 0
+        heading = 7000
+        altitude = 6000
+        vertical = -5000
 
         print("Speed: ")
         print(speed)

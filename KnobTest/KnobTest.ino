@@ -39,7 +39,7 @@ int apHead = 15;
 int apAlt = 3000;
 int apVS = 0;
 
-int combinedHigh, combinedLow;
+int combinedHigh, combinedLow, combinedValue;
 
 //loc
 //appr
@@ -49,11 +49,6 @@ int combinedHigh, combinedLow;
 //??
 
 SerialTransfer myTransfer;
-
-union combined {
-  uint16_t value;
-  byte myData[4];
-}
 
 void setup() {
   Serial.begin(9600);
@@ -72,7 +67,7 @@ void setup() {
   tft.setTextWrap(false);
   tft.setCursor(0, 0);
   tft.setTextColor(ST7735_WHITE, ST7735_BLACK);
-  tft.setTextSize(1);
+  tft.setTextSize(2);
   delay(1000);
 
   myTransfer.begin(Serial);
@@ -85,7 +80,7 @@ void setup() {
 
 void loop() {
   if (myTransfer.available()) {
-    uint16_t received[32];
+    uint16_t received[myTransfer.bytesRead];
     for (uint16_t i = 0; i < myTransfer.bytesRead; i++) {
       received[i] = myTransfer.packet.rxBuff[i];
       
@@ -93,141 +88,95 @@ void loop() {
     }
 
     long int selectedSpeed, selectedHeading, selectedAltitude, selectedVertical, highSpeed, highHeading, highAltitude, highVertical = 0;
-
-//    selectedSpeed = combine(0, received);
-//    selectedSpeed = combine(0, 4, received);
-    selectedHeading = combine(8, 12, received);
-//    selectedAltitude = combine(16, 20, received);
-//    selectedVertical = combine(24, 28, received);
+    delay(1000);
+ 
+    selectedSpeed = combine(0, 3, received);
+    selectedHeading = combine(8, 11, received);
+    selectedAltitude = combine(16, 19, received);
+    selectedVertical = combine(24, 27, received);
     
-//    unsigned char result = speedRotary.process();
-//    int pressed = digitalRead(4);
-//    
-//    if (result == DIR_CW) {
-//      selectedSpeed++;
-//      changed = 1;
-//    } else if (result == DIR_CCW) {
-//      selectedSpeed--;
-//      changed = 1;
-//    } else if (pressed == 0) {
-//        if (pressed != lastSpeedButton) {
-//          
-//      }
-//    }
-//    lastSpeedButton = pressed;
-
-//    if (1) {
-
-      delay(5000);
-//      Serial.println(selectedSpeed);
-//      Serial.println(selectedHeading);
-//      Serial.println(selectedAltitude);
-//      Serial.println(selectedVertical);
-      for (int ix = 0; ix < 32; ix++) {
-        Serial.print(received[ix]);
-        Serial.print(",");
+    unsigned char result = speedRotary.process();
+    int pressed = digitalRead(4);
+    
+    if (result == DIR_CW) {
+      selectedSpeed++;
+      changed = 1;
+    } else if (result == DIR_CCW) {
+      selectedSpeed--;
+      changed = 1;
+    } else if (pressed == 0) {
+        if (pressed != lastSpeedButton) {
+          
       }
-      Serial.println();
-      Serial.println(selectedSpeed);
-      Serial.println(combinedHigh);
-      Serial.println(combinedLow);
+    }
+    lastSpeedButton = pressed;
 
-//      delay(100);
-//      tft.setCursor(0, 0);
-//      if (changed) tft.fillScreen(ST7735_BLACK);
-//      tft.println(selectedSpeed);
-//      tft.println(selectedHeading);
-//      tft.println(selectedAltitude);
-//      tft.println(selectedVertical);
-//      changed = 0;
-//    }
+    while (1) {
 
-//2911304277422742
-//2912304277422742
+      delay(100);
+      tft.setCursor(0, 0);
+      if (changed) tft.fillScreen(ST7735_BLACK);
+      tft.print("Spd:  ");
+      tft.print(selectedSpeed);
+      tft.print("   \n");
+      tft.print("Hdg:  ");
+      tft.print(selectedHeading);
+      tft.print("   \n");
+      tft.print("Alt:  ");
+      tft.print(selectedAltitude);
+      tft.print("   \n");
+      if (selectedVertical < 0) {
+        tft.print("V/S: ");
+      } else {
+        tft.print("V/S:  ");
+      }
+      tft.print(selectedVertical);
+      tft.print("   \n");
+      changed = 0;
+    }
 
   }
 
 }
 
-int combine(int start, int finish, uint16_t received[]) {
-  int low, high = 0;
+int combine(int bottom, int top, uint16_t received[]) {
+  int low = 0, high = 0;
 
-//    union {
-//      uint16_t returnedVal;
-//      byte myData[4];
-//    } speedByte;
-    for (int ix = finish; ix > start; ix--) {
-    high += received[ix];
-    low += received[ix + 4];
-  }
-    speedByte.returnedVal = selectedSpeed;
+    for (int ix = top; ix >= bottom; ix--) {
+      if (ix != bottom) {
+        high += received[ix];
+        high << 8;
+      } else {
+        high += received[ix];
+      }
+//      Serial.print("High byte is: ");
+//      printBinary(high);
+//      Serial.println();
+    }
+
+    for (int ix = top; ix >= bottom; ix--) {
+      if (ix != bottom) {
+        low += received[ix + 4];
+        low << 8;
+      } else {
+        low += received[ix + 4];
+      }
+    }
 
 
-//  int combined = high;
+  uint16_t combined = (high << 8) | low;
 //  combined = combined<<8;
 //  combined |= low;
-//  combinedHigh = high;
-//  combinedLow = low;
-//  return combined;
+  combinedHigh = high;
+  combinedLow = low;
+  combinedValue = combined;
+//  printBinary(combined);
+//  Serial.println();
+  return combined;
+}
 
-//  for (int ix = 3 + start; ix >= start; ix--) {
-//    if (ix != 0) {
-//      high += received[ix];
-//      high << 8;
-//    } else {
-//      high += received[ix];
-//    }
-//  }
-//  
-//  for (int ix = 3 + start; ix >= start; ix--) {
-//    if (ix != 0) {
-//      selected += received[ix + 4];
-//      selected << 8;
-//    } else {
-//      selected += received[ix + 4];
-//    }
+void printBinary(byte inByte) {
+  for (int ix = 31; ix >= 0; ix--) {
+    Serial.print(bitRead(inByte, ix));
   }
-
-//  word result = high * 256 + selected;
-//  selected = result;
-
-//    union {
-//      uint16_t value;
-//      byte myData[4];
-//    } combined;
-//    combined.value = selected;
-//    return combined.value;
-
-//  int combined;
-//  combined = high;              //send x_high to rightmost 8 bits
-//  combined = combined<<8;         //shift x_high over to leftmost 8 bits
-//  combined |= low;
-
-//  return combined;
-//}
-//    for (int ix = 3; ix >=0; ix--) {
-//      if (ix != 0) {
-//        highSpeed += received[ix];
-//        highSpeed << 8;
-//      } else {
-//        highSpeed += received[ix];
-//      }
-//    }
-//
-//    for (int ix = 3; ix >= 0; ix--) {
-//      if (ix != 0) {
-//        selectedSpeed += received[ix + 4];
-//        selectedSpeed << 8;
-//      } else {
-//        selectedSpeed += received[ix + 4];
-//      }
-//    }
-//
-//    word combined = highSpeed * 256 + selectedSpeed;
-//    selectedSpeed = combined;
-//
-//    union {
-//      uint16_t returnedVal;
-//      byte myData[4];
-//    } speedByte;
-//    speedByte.returnedVal = selectedSpeed;
+}
