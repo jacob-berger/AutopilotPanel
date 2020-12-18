@@ -5,6 +5,7 @@ from time import sleep
 from pySerialTransfer import pySerialTransfer as txfer
 import numpy as np
 
+
 def split(toSplit):
     if toSplit > 256 or toSplit < -255:
         splitHigh = (toSplit >> 8) & 0xff
@@ -17,6 +18,7 @@ def split(toSplit):
 
     return result
 
+
 ports = list(serial.tools.list_ports.comports())
 
 port = ''
@@ -26,7 +28,7 @@ for p in ports:
     comPort = portString.find('ETH')
     if comPort != -1:
         port = p.name
-        
+
 baudrate = 9600
 
 try:
@@ -47,50 +49,51 @@ try:
 
     x = 0
     while 1:
-##        speed = round(ac.get("AUTOPILOT_AIRSPEED_HOLD_VAR"))
-##        heading = round(ac.get("AUTOPILOT_HEADING_LOCK_DIR"))
-##        altitude = round(ac.get("AUTOPILOT_ALTITUDE_LOCK_VAR"))
-##        vertical = round(ac.get("AUTOPILOT_VERTICAL_HOLD_VAR"))
-        speed = 8000
-        heading = 7000
-        altitude = 6000
-        vertical = -5000
+       speed = round(ac.get("AUTOPILOT_AIRSPEED_HOLD_VAR"))
+       heading = round(ac.get("AUTOPILOT_HEADING_LOCK_DIR"))
+       altitude = round(ac.get("AUTOPILOT_ALTITUDE_LOCK_VAR"))
+       vertical = round(ac.get("AUTOPILOT_VERTICAL_HOLD_VAR"))
+       # speed = 8000
+       # heading = 7000
+       # altitude = 6000
+       # vertical = -5000
 
-        print("Speed: ")
-        print(speed)
-        print("Heading: ")
-        print(heading)
-        print("Altitude: ")
-        print(altitude)
-        print("V/S: ")
-        print(vertical)
-        print()
+       print("Speed: ")
+       print(speed)
+       print("Heading: ")
+       print(heading)
+       print("Altitude: ")
+       print(altitude)
+       print("V/S: ")
+       print(vertical)
+       print()
 
-        speedBytes = split(speed)
-        speedHigh = speedBytes[0]
-        speedLow = speedBytes[1]
+       speedBytes = split(speed)
+       speedHigh = speedBytes[0]
+       speedLow = speedBytes[1]
 
-        headingBytes = split(heading)
-        headingHigh = headingBytes[0]
-        headingLow = headingBytes[1]
+       headingBytes = split(heading)
+       headingHigh = headingBytes[0]
+       headingLow = headingBytes[1]
 
-        altitudeBytes = split(altitude)
-        altitudeHigh = altitudeBytes[0]
-        altitudeLow = altitudeBytes[1]
+       altitudeBytes = split(altitude)
+       altitudeHigh = altitudeBytes[0]
+       altitudeLow = altitudeBytes[1]
 
-        verticalBytes = split(vertical)
-        verticalHigh = verticalBytes[0]
-        verticalLow = verticalBytes[1]
-        
-        simData = [speedHigh, speedLow, headingHigh, headingLow, altitudeHigh, altitudeLow, verticalHigh, verticalLow]
+       verticalBytes = split(vertical)
+       verticalHigh = verticalBytes[0]
+       verticalLow = verticalBytes[1]
 
-        for val in simData:
+       simData = [speedHigh, speedLow, headingHigh, headingLow,
+                  altitudeHigh, altitudeLow, verticalHigh, verticalLow]
+
+       for val in simData:
             print(val)
         print()
-        
+
         send_size = 0
         list_size = ard.tx_obj(simData)
-        
+
         send_size += list_size
         ard.send(send_size)
         sleep(1)
@@ -116,11 +119,11 @@ except KeyboardInterrupt:
         ard.close()
     except:
         pass
-    
+
 except:
     import traceback
     traceback.print_exc()
-    
+
     try:
         ard.close()
     except:
