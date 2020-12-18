@@ -132,7 +132,7 @@ void loop() {
       }
       tft.print(selectedVertical);
       tft.print("   \n");
-      changed = 0;
+      changed = 1; // Always refreshing
     }
 
   }
