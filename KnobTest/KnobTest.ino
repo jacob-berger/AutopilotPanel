@@ -111,7 +111,7 @@ void loop() {
     }
     lastSpeedButton = pressed;
 
-    while (1) {
+    if (changed) {
 
       delay(100);
       tft.setCursor(0, 0);
@@ -132,7 +132,7 @@ void loop() {
       }
       tft.print(selectedVertical);
       tft.print("   \n");
-      changed = 1; // Always refreshing
+      changed = 0; // Always refreshing
     }
 
   }
