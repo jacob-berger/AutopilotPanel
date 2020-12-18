@@ -60,8 +60,29 @@ try:
         else:
             speedHigh = 0
             speedLow = speed
+
+        if heading > 256:
+            headingHigh = (heading >> 8) & 0xff
+            headingLow = heading & 0xff
+        else:
+            headingHigh = 0
+            headingLow = heading
+
+        if altitude > 256:
+            altitudeHigh = (altitude >> 8) & 0xff
+            altitudeLow = altitude & 0xff
+        else:
+            altitudeHigh = 0
+            altitudeLow = altitude
+
+        if (vertical > 256) or (vertical < -255):
+            verticalHigh = (vertical >> 8) & 0xff
+            verticalLow = vertical & 0xff
+        else:
+            verticalHigh = 0
+            verticalLow = vertical
         
-        simData = [speedHigh, speedLow, heading, altitude, vertical]
+        simData = [speedHigh, speedLow, headingHigh, headingLow, altitudeHigh, altitudeLow, verticalHigh, verticalLow]
 
         send_size = 0
         list_size = ard.tx_obj(simData)
