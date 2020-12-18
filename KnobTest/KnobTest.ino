@@ -78,47 +78,42 @@ void setup() {
 
 void loop() {
   if (myTransfer.available()) {
-    uint16_t received[20];
+    uint16_t received[32];
     for (uint16_t i = 0; i < myTransfer.bytesRead; i++) {
       received[i] = myTransfer.packet.rxBuff[i];
       
       myTransfer.packet.txBuff[i] = received[i];
     }
 
-    long int selectedSpeed, selectedHeading, selectedAltitude, selectedVertical = 0;
+    long int selectedSpeed, selectedHeading, selectedAltitude, selectedVertical, highSpeed, highHeading, highAltitude, highVertical = 0;
 
-    long int highSpeed = 0;
-    for (int ix = 3; ix >=0; ix--) {
-      if (ix != 0) {
-        highSpeed += received[ix];
-        highSpeed << 8;
-      } else {
-        highSpeed += received[ix];
-      }
-    }
-
-    for (int ix = 3; ix >= 0; ix--) {
-      if (ix != 0) {
-        selectedSpeed += received[ix + 4];
-        selectedSpeed << 8;
-      } else {
-        selectedSpeed += received[ix + 4];
-      }
-    }
-
-    word combined = highSpeed * 256 + selectedSpeed;
-    selectedSpeed = combined;
-
-    union {
-      uint16_t returnedVal;
-      byte myData[4];
-    } speedByte;
-    speedByte.returnedVal = selectedSpeed;
-
-    //returning data to companion
-//    for (int ix = 0; ix < 4; ix++) {
-//      myTransfer.packet.txBuff[ix] = speedByte.myData[ix];
+//    for (int ix = 3; ix >=0; ix--) {
+//      if (ix != 0) {
+//        highSpeed += received[ix];
+//        highSpeed << 8;
+//      } else {
+//        highSpeed += received[ix];
+//      }
 //    }
+//
+//    for (int ix = 3; ix >= 0; ix--) {
+//      if (ix != 0) {
+//        selectedSpeed += received[ix + 4];
+//        selectedSpeed << 8;
+//      } else {
+//        selectedSpeed += received[ix + 4];
+//      }
+//    }
+//
+//    word combined = highSpeed * 256 + selectedSpeed;
+//    selectedSpeed = combined;
+//
+//    union {
+//      uint16_t returnedVal;
+//      byte myData[4];
+//    } speedByte;
+//    speedByte.returnedVal = selectedSpeed;
+    selectedSpeed = combine(0, received);
 
     /////////////////////////////////////////
 
@@ -219,19 +214,64 @@ void loop() {
       changed = 0;
     }
 
-//    delay(5000);
-//    for (int ix = 0; ix < 16; ix++) {
-//      Serial.println(received[ix]);
-//    }
-
-//    Serial.print("Speed: ");
-//    Serial.println(selectedSpeed);
-//    Serial.print("Heading: ");
-//    Serial.println(selectedHeading);
-//    Serial.print("Altitude: ");
-//    Serial.println(selectedAltitude);
-//    Serial.print("V/S: ");
-//    Serial.println(selectedVertical);
   }
 
 }
+
+int combine(int start, uint16_t received[]) {
+  int selected, high = 0;
+
+  for (int ix = 3; ix >=0; ix--) {
+    if (ix != 0) {
+      high += received[ix];
+      high << 8;
+    } else {
+      high += received[ix];
+    }
+  }
+  
+  for (int ix = start; ix >= start - 3; ix--) {
+    if (ix != 0) {
+      selected += received[ix + (4 * start)];
+      selected << 8;
+    } else {
+      selected += received[ix + (4 * start)];
+    }
+  }
+
+    word result = high * 256 + selected;
+    selected = result;
+
+    union {
+      uint16_t value;
+      byte myData[4];
+    } combined;
+    combined.value = selected;
+    return combined.value;
+}
+//    for (int ix = 3; ix >=0; ix--) {
+//      if (ix != 0) {
+//        highSpeed += received[ix];
+//        highSpeed << 8;
+//      } else {
+//        highSpeed += received[ix];
+//      }
+//    }
+//
+//    for (int ix = 3; ix >= 0; ix--) {
+//      if (ix != 0) {
+//        selectedSpeed += received[ix + 4];
+//        selectedSpeed << 8;
+//      } else {
+//        selectedSpeed += received[ix + 4];
+//      }
+//    }
+//
+//    word combined = highSpeed * 256 + selectedSpeed;
+//    selectedSpeed = combined;
+//
+//    union {
+//      uint16_t returnedVal;
+//      byte myData[4];
+//    } speedByte;
+//    speedByte.returnedVal = selectedSpeed;

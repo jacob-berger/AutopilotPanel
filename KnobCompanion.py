@@ -5,6 +5,18 @@ from time import sleep
 from pySerialTransfer import pySerialTransfer as txfer
 import numpy as np
 
+def split(toSplit):
+    if toSplit > 256 or toSplit < -255:
+        splitHigh = (toSplit >> 8) & 0xff
+        splitLow = toSplit & 0xff
+    else:
+        splitHigh = 0
+        splitLow = toSplit
+
+    result = [splitHigh, splitLow]
+
+    return result
+
 ports = list(serial.tools.list_ports.comports())
 
 port = ''
@@ -54,35 +66,18 @@ try:
         print(vertical)
         print()
 
-        if speed > 256:
-            speedHigh = (speed >> 8) & 0xff
-            speedLow = speed & 0xff
-        else:
-            speedHigh = 0
-            speedLow = speed
+##        if speed > 256:
+##            speedHigh = (speed >> 8) & 0xff
+##            speedLow = speed & 0xff
+##        else:
+##            speedHigh = 0
+##            speedLow = speed
 
-        if heading > 256:
-            headingHigh = (heading >> 8) & 0xff
-            headingLow = heading & 0xff
-        else:
-            headingHigh = 0
-            headingLow = heading
-
-        if altitude > 256:
-            altitudeHigh = (altitude >> 8) & 0xff
-            altitudeLow = altitude & 0xff
-        else:
-            altitudeHigh = 0
-            altitudeLow = altitude
-
-        if (vertical > 256) or (vertical < -255):
-            verticalHigh = (vertical >> 8) & 0xff
-            verticalLow = vertical & 0xff
-        else:
-            verticalHigh = 0
-            verticalLow = vertical
+        speedBytes = split(speed)
+        speedHigh = speedBytes[0]
+        speedLow = speedBytes[1]
         
-        simData = [speedHigh, speedLow, headingHigh, headingLow, altitudeHigh, altitudeLow, verticalHigh, verticalLow]
+        simData = [speedHigh, speedLow, heading, altitude, vertical]
 
         send_size = 0
         list_size = ard.tx_obj(simData)
