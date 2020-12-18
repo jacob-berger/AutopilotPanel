@@ -76,9 +76,25 @@ try:
         speedBytes = split(speed)
         speedHigh = speedBytes[0]
         speedLow = speedBytes[1]
-        
-        simData = [speedHigh, speedLow, heading, altitude, vertical]
 
+        headingBytes = split(heading)
+        headingHigh = headingBytes[0]
+        headingLow = headingBytes[1]
+
+        altitudeBytes = split(altitude)
+        altitudeHigh = altitudeBytes[0]
+        altitudeLow = altitudeBytes[1]
+
+        verticalBytes = split(vertical)
+        verticalHigh = verticalBytes[0]
+        verticalLow = verticalBytes[1]
+        
+        simData = [speedHigh, speedLow, headingHigh, headingLow, altitudeHigh, altitudeLow, verticalHigh, verticalLow]
+
+        for val in simData:
+            print(val)
+        print()
+        
         send_size = 0
         list_size = ard.tx_obj(simData)
         

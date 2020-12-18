@@ -114,76 +114,9 @@ void loop() {
 //    } speedByte;
 //    speedByte.returnedVal = selectedSpeed;
     selectedSpeed = combine(0, received);
-
-    /////////////////////////////////////////
-
-    for (int ix = 3; ix >= 0; ix--) {
-      if (ix != 0) {
-        selectedHeading += received[ix + 8];
-        selectedHeading << 8;
-      } else {
-        selectedHeading += received[ix + 8];
-      }
-    }
-
-    union {
-      uint16_t returnedVal;
-      byte myData[4];
-    } headingByte;
-    headingByte.returnedVal = selectedHeading;
-
-    //returning data to companion
-//    for (int ix = 4; ix < 8; ix++) {
-//      myTransfer.packet.txBuff[ix] = headingByte.myData[ix - 4];
-//    }
-
-    //////////////////////////////////////////
-
-    for (int ix = 3; ix >= 0; ix--) {
-      if (ix != 0) {
-        selectedAltitude += received[ix + 12];
-        selectedAltitude << 8;
-      } else {
-        selectedAltitude += received[ix + 12];
-      }
-    }
-
-    selectedAltitude = selectedAltitude * 100;
-
-    union {
-      uint16_t returnedVal;
-      byte myData[4];
-    } altitudeByte;
-    altitudeByte.returnedVal = selectedAltitude;
-
-    //returning data to companion
-//    for (int ix = 8; ix < 12; ix++) {
-//      myTransfer.packet.txBuff[ix] = altitudeByte.myData[ix - 8];
-//    }
-
-    /////////////////////////////////////////////
-
-    for (int ix = 3; ix >= 0; ix--) {
-      if (ix != 0) {
-        selectedVertical += received[ix + 16];
-        selectedVertical << 8;
-      } else {
-        selectedVertical += received[ix + 16];
-      }
-    }
-
-    union {
-      uint16_t returnedVal;
-      byte myData[4];
-    } verticalByte;
-    verticalByte.returnedVal = selectedVertical;
-
-    //returning data to companion
-//    for (int ix = 12; ix < 16; ix++) {
-//      myTransfer.packet.txBuff[ix] = verticalByte.myData[ix - 12];
-//    }
-
-    ///////////////////////////////////////////////
+    selectedHeading = combine(8, received);
+    selectedAltitude = combine(16, received);
+    selectedVertical = combine(24, received);
     
     myTransfer.sendData(myTransfer.bytesRead);
     
@@ -205,13 +138,29 @@ void loop() {
 
     if (1) {
       tft.setCursor(0, 0);
-//      tft.fillScreen(ST7735_BLACK);
+      if (changed) tft.fillScreen(ST7735_BLACK);
       tft.print(selectedSpeed);
-      tft.print("                \n");
-      tft.println(selectedHeading);
-      tft.println(selectedAltitude);
-      tft.println(selectedVertical);
+      tft.print("  ");
+      tft.println();
+      tft.print(selectedHeading);
+      tft.print("  ");
+      tft.println();
+      tft.print(selectedAltitude);
+      tft.print("  ");
+      tft.println();
+      tft.print(selectedVertical);
+      tft.print("  ");
+      tft.println();
       changed = 0;
+//      for (int ix = 0; ix < 8; ix++) {
+//        tft.print(received[ix]);
+//        tft.print("   \n");
+//      }
+//      tft.println(selectedHeading);
+//      tft.println(selectedAltitude);
+//      tft.println(selectedVertical);
+//      tft.print(selectedHeading);
+//      tft.print("   \n");
     }
 
   }
@@ -221,7 +170,7 @@ void loop() {
 int combine(int start, uint16_t received[]) {
   int selected, high = 0;
 
-  for (int ix = 3; ix >=0; ix--) {
+  for (int ix = 3 + start; ix >= start; ix--) {
     if (ix != 0) {
       high += received[ix];
       high << 8;
@@ -230,12 +179,12 @@ int combine(int start, uint16_t received[]) {
     }
   }
   
-  for (int ix = start; ix >= start - 3; ix--) {
+  for (int ix = 3 + start; ix >= start; ix--) {
     if (ix != 0) {
-      selected += received[ix + (4 * start)];
+      selected += received[ix + 4];
       selected << 8;
     } else {
-      selected += received[ix + (4 * start)];
+      selected += received[ix + 4];
     }
   }
 
