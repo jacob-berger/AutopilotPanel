@@ -107,12 +107,13 @@ try:
                         print('ERROR: STOP_BYTE_ERROR')
                     else:
                         print('ERROR: {}'.format(ard.status))
+                print("End of if")
     ##        received = ard.rx_obj(obj_type=type(testArray), obj_byte_size = send_size, list_format='i')
     ##        print("Received: ")
     ##        print(received)
     ##        x = x + 1
 
-        ard.close()
+    ard.close()
 
 except KeyboardInterrupt:
     try:

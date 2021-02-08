@@ -34,12 +34,14 @@ int lastVerticalButton = 1;
 
 int changed = 1;
 
-int apSpeed = 100;
-int apHead = 15;
-int apAlt = 3000;
-int apVS = 0;
+int lastSpeed = 0;
+int lastHeading = 0;
+int lastAltitude = 0;
+int lastVertical = 0;
 
 int combinedHigh, combinedLow, combinedValue;
+
+int displayOn = 1;
 
 //loc
 //appr
@@ -72,13 +74,19 @@ void setup() {
 
   myTransfer.begin(Serial);
 //  Gamepad.begin();
-  pinMode(4, INPUT_PULLUP);
-//  pinMode(7, INPUT_PULLUP);
-//  pinMode(10, INPUT_PULLUP);
-//  pinMode(13, INPUT_PULLUP);
+  pinMode(4, INPUT);
+  pinMode(7, INPUT);
+  pinMode(10, INPUT);
+  pinMode(13, INPUT);
+  pinMode(A2, OUTPUT);
 }
 
 void loop() {
+  if (displayOn == 1) {
+    digitalWrite(A2, HIGH);
+  } else {
+    digitalWrite(A2, LOW);
+  }
   if (myTransfer.available()) {
     uint16_t received[myTransfer.bytesRead];
     for (uint16_t i = 0; i < myTransfer.bytesRead; i++) {
@@ -94,9 +102,17 @@ void loop() {
     selectedHeading = combine(8, 11, received);
     selectedAltitude = combine(16, 19, received);
     selectedVertical = combine(24, 27, received);
+
+    if (selectedSpeed != lastSpeed || selectedHeading != lastHeading || selectedAltitude != lastAltitude || selectedVertical != lastVertical) {
+      lastSpeed = selectedSpeed;
+      lastHeading = selectedHeading;
+      lastAltitude = selectedAltitude;
+      lastVertical = selectedVertical;
+      changed = 1;
+    }
     
     unsigned char result = speedRotary.process();
-    int pressed = digitalRead(4);
+    int pressed = !digitalRead(4);
     
     if (result == DIR_CW) {
       selectedSpeed++;
@@ -115,7 +131,6 @@ void loop() {
 
       delay(100);
       tft.setCursor(0, 0);
-      if (changed) tft.fillScreen(ST7735_BLACK);
       tft.print("Spd:  ");
       tft.print(selectedSpeed);
       tft.print("   \n");
