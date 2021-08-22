@@ -1,5 +1,7 @@
 from SimConnect import *
 import serial
+import time
+from serial.serialutil import Timeout
 import serial.tools.list_ports
 from time import sleep
 from pySerialTransfer import pySerialTransfer as txfer
@@ -29,103 +31,149 @@ for p in ports:
     if comPort != -1:
         port = p.name
 
-baudrate = 9600
+baudrate = 115200
+
+arduino = serial.Serial(port, baudrate=115200, timeout=.1)
+def write_read(x):
+    arduino.write(bytes(x, 'utf-8'))
+    time.sleep(0.05)
+    data = arduino.readline()
+    return data
 
 try:
-    ard = txfer.SerialTransfer(port, baudrate)
-    ard.open()
-    sleep(2)
     sm = SimConnect()
     ac = AircraftRequests(sm, _time=2000)
 
-    prevSpeed = 0
-    speed = 0
-    prevHead = 0
-    heading = 0
-    prevAlt = 0
-    altitude = 0
-    prevVS = 0
-    vertical = 0
+    #get initial values from sim
+    speed = round(ac.get("AUTOPILOT_AIRSPEED_HOLD_VAR"))
+    prevSpeed = speed
+    heading = round(ac.get("AUTOPILOT_HEADING_LOCK_DIR"))
+    prevHead = heading
+    altitude = round(ac.get("AUTOPILOT_ALTITUDE_LOCK_VAR"))
+    prevAlt = altitude
+    vertical = round(ac.get("AUTOPILOT_VERTICAL_HOLD_VAR"))
+    prevVS = vertical
 
-    x = 0
+    timeout = 2
+    changedLast = "sim"
+    lastValid = []
     while 1:
-        speed = round(ac.get("AUTOPILOT_AIRSPEED_HOLD_VAR"))
-        heading = round(ac.get("AUTOPILOT_HEADING_LOCK_DIR"))
-        altitude = round(ac.get("AUTOPILOT_ALTITUDE_LOCK_VAR"))
-        vertical = round(ac.get("AUTOPILOT_VERTICAL_HOLD_VAR"))
-        # speed = 8000
-        # heading = 7000
-        # altitude = 6000
-        # vertical = -5000
 
-        print("Speed: ")
-        print(speed)
-        print("Heading: ")
-        print(heading)
-        print("Altitude: ")
-        print(altitude)
-        print("V/S: ")
-        print(vertical)
+        print(f'Speed: {speed}')
+        print(f'Heading: {heading}')
+        print(f'Altitude: {altitude}')
+        print(f'Vertical: {vertical}')
+        print(changedLast)
         print()
 
-        speedBytes = split(speed)
-        speedHigh = speedBytes[0]
-        speedLow = speedBytes[1]
+        if (timeout < 1):
+            print("Timeout")
+            print(lastValid)
+            if (changedLast == "sim"):
+                ac.set("AP_SPD_VAR", prevSpeed)
+                ac.set("AP_HDG_VAR", prevHead)
+                ac.set("AP_ALT_VAR_SET_ENGLISH", prevAlt)
+                ac.set("AP_VS_VAR", prevVS)
+            elif (len(lastValid) > 0 and changedLast == "ard"):
+                toSync = True
+                while toSync:
+                    inSpeed = round(ac.get("AUTOPILOT_AIRSPEED_HOLD_VAR"))
+                    inHeading = round(ac.get("AUTOPILOT_HEADING_LOCK_DIR"))
+                    inAltitude = round(ac.get("AUTOPILOT_ALTITUDE_LOCK_VAR"))
+                    inVertical = round(ac.get("AUTOPILOT_VERTICAL_HOLD_VAR"))
+                    if (inSpeed < lastValid[0]):
+                        ac.set("AP_SPD_VAR", inSpeed + 1)
+                    if (inSpeed > lastValid[0]):
+                        ac.set("AP_SPD_VAR", inSpeed - 1)
+                    if (inHeading < lastValid[1]):
+                        ac.set("AP_HDG_VAR", inHeading + 1)
+                    if (inHeading > lastValid[1]):
+                        ac.set("AP_HDG_VAR", inHeading - 1)
+                    if (inAltitude < lastValid[2]):
+                        ac.set("AP_ALT_VAR_SET_ENGLISH", inHeading + 1)
+                    if (inAltitude > lastValid[2]):
+                        ac.set("AP_ALT_VAR_SET_ENGLISH", inHeading - 1)
+                    if (inVertical < lastValid[3]):
+                        ac.set("AP_VS_VAR", inVertical + 1)
+                    if (inVertical > lastValid[3]):
+                        ac.set("AP_VS_VAR", inVertical - 1)
+                    if (inSpeed == lastValid[0] and inHeading == lastValid[1] and inAltitude == lastValid[2] and inVertical == lastValid[3]):
+                        print(ac.get("AUTOPILOT_AIRSPEED_HOLD_VAR"))
+                        print(ac.get("AUTOPILOT_HEADING_LOCK_DIR"))
+                        print(ac.get("AUTOPILOT_ALTITUDE_LOCK_VAR"))
+                        print(ac.get("AUTOPILOT_VERTICAL_HOLD_VAR"))
+                        print(lastValid)
+                        toSync = False
+            
 
-        headingBytes = split(heading)
-        headingHigh = headingBytes[0]
-        headingLow = headingBytes[1]
+        #check for changes from arduino
+        changed = arduino.readline()
+        if (changed):
+            changedLast = "ard"
+            timeout = 2
+            #look for < and >
+            start = changed.find(b'<')
+            end = changed.find(b'>')
+            if (start != -1 and end != -1 and start < end):
+                #trim
+                #split and create array
+                raw = changed[1:-1]
+                dataIn = raw.split(b',')
+                #if length of array != 4 flush buffer
+                if (len(dataIn) == 4):
+                    speed = int(dataIn[0])
+                    heading = int(dataIn[1])
+                    altitude = int(dataIn[2])
+                    vertical = int(dataIn[3])
+                    
+                    prevSpeed = speed
+                    prevHead = heading
+                    prevAlt = altitude
+                    prevVS = vertical
 
-        altitudeBytes = split(altitude)
-        altitudeHigh = altitudeBytes[0]
-        altitudeLow = altitudeBytes[1]
+                    ac.set("AP_SPD_VAR", speed)
+                    ac.set("AP_HDG_VAR", heading)
+                    ac.set("AP_ALT_VAR_SET_ENGLISH", altitude)
+                    ac.set("AP_VS_VAR", vertical)
 
-        verticalBytes = split(vertical)
-        verticalHigh = verticalBytes[0]
-        verticalLow = verticalBytes[1]
+                    lastValid = [speed, heading, altitude, vertical]
+            else:
+                arduino.flushInput()
+                arduino.flushOutput()
+                sleep(0.1)
 
-        simData = [speedHigh, speedLow, headingHigh, headingLow,
-                    altitudeHigh, altitudeLow, verticalHigh, verticalLow]
+        #check for changes from sim and push
+        else:
+            if((speed is not None) and (heading is not None) and (altitude is not None) and (vertical is not None)):
+                #getting current values from sim
+                speed = round(ac.get("AUTOPILOT_AIRSPEED_HOLD_VAR"))
+                heading = round(ac.get("AUTOPILOT_HEADING_LOCK_DIR"))
+                altitude = round(ac.get("AUTOPILOT_ALTITUDE_LOCK_VAR"))
+                vertical = round(ac.get("AUTOPILOT_VERTICAL_HOLD_VAR"))
 
-        for val in simData:
-            print(val)
-            print()
+                if (speed != prevSpeed or heading != prevHead or altitude != prevAlt or vertical != prevVS):
+                    changedLast = "sim"
+                    full = str(speed) + "," + str(heading) + "," + str(altitude) + "," + str(vertical) + "\n"
+                    arduino.write(bytes(full, 'utf-8'))
+                    prevSpeed = speed
+                    prevHead = heading
+                    prevAlt = altitude
+                    prevVS = vertical
+        timeout -= 1
+        sleep(1)
 
-            send_size = 0
-            list_size = ard.tx_obj(simData)
-
-            send_size += list_size
-            ard.send(send_size)
-            sleep(1)
-            while not ard.available():
-                if ard.status < 0:
-                    if ard.status == txfer.CRC_ERROR:
-                        print('ERROR: CRC_ERROR')
-                    elif ard.status == txfer.PAYLOAD_ERROR:
-                        print('ERROR: PAYLOAD_ERROR')
-                    elif ard.status == txfer.STOP_BYTE_ERROR:
-                        print('ERROR: STOP_BYTE_ERROR')
-                    else:
-                        print('ERROR: {}'.format(ard.status))
-                print("End of if")
-    ##        received = ard.rx_obj(obj_type=type(testArray), obj_byte_size = send_size, list_format='i')
-    ##        print("Received: ")
-    ##        print(received)
-    ##        x = x + 1
-
-    ard.close()
 
 except KeyboardInterrupt:
     try:
-        ard.close()
+        arduino.close()
     except:
         pass
 
-except:
-    import traceback
-    traceback.print_exc()
+# except:
+#     import traceback
+#     traceback.print_exc()
 
-    try:
-        ard.close()
-    except:
-        pass
+#     try:
+#         ard.close()
+#     except:
+#         pass
