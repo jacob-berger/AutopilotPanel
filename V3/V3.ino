@@ -1,3 +1,4 @@
+#include <Joystick.h>
 #include <BitsAndDroidsFlightConnector.h>
 #include "Button.h"
 #include <RotaryEncoder.h>
@@ -6,7 +7,8 @@
 Adafruit_MCP3008 adc1;
 Adafruit_MCP3008 adc2;
 BitsAndDroidsFlightConnector connector(false);
-RotaryEncoder rotary(8, 7);
+RotaryEncoder rotary(3, 2);
+Joystick_ Joystick;
 
 
 int count = 0;
@@ -19,7 +21,9 @@ Adafruit_MCP3008 adcs[2]; //only expecting 2 for now
 int lastStates[16]; //only assuming buttons from adcs
 int currentStates[16];
 int held[16];
+int isEncoderButton[16];
 long lastTime;
+boolean isAP, isRad;
 
 #define altPin 0
 #define spdPin 1
@@ -30,7 +34,8 @@ long lastTime;
 #define apPin 6
 #define fdPin 7
 #define atPin 8
-#define swapPin 9
+#define swap1Pin 9
+#define swap2Pin 10
 
 /*
  *  Alt Spd Hdg V/S Loc 
@@ -44,9 +49,11 @@ long lastTime;
  */
 
 void setup() {
-  pinMode(LED_BUILTIN, OUTPUT);
+//  pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(115200);
   Serial.setTimeout(15);
+  isAP = true;
+  isRad = !isAP;
   while (!Serial);
 
 //  Serial.println("MCP3008 simple test.");
@@ -59,10 +66,14 @@ void setup() {
 
   // Software SPI (specify all, use any available digital)
   // (sck, mosi, miso, cs);
-  adc1.begin(14, 10, 11, 9);
-  adc2.begin(14, 10, 11, 2);
+  adc1.begin(13, 11, 12, 10);
+  adc2.begin(13, 11, 12, 9);
   adcs[0] = adc1;
   adcs[1] = adc2;
+  isEncoderButton[0] = true;
+  isEncoderButton[1] = true;
+  isEncoderButton[2] = true;
+  isEncoderButton[3] = true;
 
   
   
@@ -73,13 +84,10 @@ void loop() {
 //  BITSANDDROIDSCONNECTOR
     connector.dataHandling();
 
-    readInputs();
-    
+//    displayADCs();
+
+    readInputs();    
     processInputs();
-
-    bool FDState = connector.getAPFlightDirectorOn();
-
-    digitalWrite(LED_BUILTIN, FDState);
 
 //    delay(1000);
 //    
@@ -96,7 +104,7 @@ void loop() {
 //      pos = newPos;
 //    }
 //
-    delay(10);
+    delay(100);
 }
 
 void readInputs() {
@@ -106,7 +114,7 @@ void readInputs() {
       int value = adcs[ix].readADC(iy);
       int button = (ix * 8) + iy;
       lastStates[button] = currentStates[button];
-      if (value > inputThreshold) {
+      if ((value > inputThreshold && isEncoderButton[button] == 0) || (isEncoderButton[button] == 1 && value < inputThreshold)) {//newer encoders do not require resistor to +5V, older ones do
         if (lastStates[button] == 0) {//button pressed
           lastTime = millis();
         }
@@ -115,7 +123,6 @@ void readInputs() {
         currentStates[button] = 0;
         if (lastStates[button] == 1) {//button released
           long current = millis();
-//          Serial.println(current - lastTime);
           if ((current - lastTime) > 1000) {
             held[button] = 1;
           }
@@ -133,107 +140,121 @@ void processInputs() {
         case altPin:
           if (held[ix] == 1) {//holding for managed
             //not yet implemented
-//            Serial.println("Held alt");
-            Serial.println(connector.sendAPHeadingHoldOn());
+            Serial.println("Held alt");
+            //TODO
+            //include spadnext association with button
+            Joystick.pressButton(ix);
             held[ix] = 0;
           } else {
+            Serial.println("Pressed alt");
             Serial.println(connector.sendAPPanelAltitudeHold());
           }
           break;
-        case 1:
+        case spdPin:
           if (held[ix] == 1) {//holding for managed
             //not yet implemented
-//            Serial.println("Held");
+            Serial.println("Held spd");
+            //TODO
+            //include spadnext association with button
+            Joystick.pressButton(ix);
             held[ix] = 0;
           } else {
-            connector.sendAPAirspeedHold();
+            Serial.println("Pressed spd");
+            Serial.println(connector.sendAPAirspeedHold());
           }
           break;
         case hdgPin:
           if (held[ix] == 1) {//holding for managed
             //not yet implemented
-//            Serial.println("Held");
+            Serial.println("Held hdg");
+            //TODO
+            //include spadnext association with button
+            Joystick.pressButton(ix);
             held[ix] = 0;
+          } else {
+            Serial.println("Held hdg");
           }
           break;
         case vsPin:
-          if (currentStates[ix] == 1) {
-//            Serial.println("Pressed 3 vs");
-          }
           if (held[ix] == 1) {
 //            not yet implemented
-//            Serial.println("Held");
+            Serial.println("Held vs");
+            //TODO
+            //include spadnext association with button
+            Joystick.pressButton(ix);
             held[ix] = 0;
+          } else {
+            Serial.println("Pressed vs");
           }
           break;
         case locPin:
-          if (currentStates[ix] == 1) {
-//            Serial.println("Pressed 4 loc");
-          }
           if (held[ix] == 1) {
             //not yet implemented
-//            Serial.println("Held");
+//            Serial.println("Held loc");
             held[ix] = 0;
+          } else {
+            Serial.println("Pressed loc");
+            Serial.println(connector.sendAPLocHold());
           }
           break;
         case appPin:
-          if (currentStates[ix] == 1) {
-//            Serial.println("Pressed 5 app");
-          }
           if (held[ix] == 1) {
             //not yet implemented
-//            Serial.println("Held");
+//            Serial.println("Held app");
             held[ix] = 0;
+          } else {
+            Serial.println("Pressed app");
+            Serial.println(connector.sendAPAprHold());
           }
           break;
         case apPin:
-          if (currentStates[ix] == 1) {
-//            Serial.println("Pressed 6 ap");
-          }
           if (held[ix] == 1) {
             //not yet implemented
-//            Serial.println("Held");
+//            Serial.println("Held ap");
             held[ix] = 0;
+          } else {
+            Serial.println("Pressed ap");
+            Serial.println(connector.sendApMasterOn());
           }
           break;
         case fdPin:
-          if (currentStates[ix] == 1) {
-//            Serial.println("Pressed 7 fd");
-          }
           if (held[ix] == 1) {
             //not yet implemented
-//            Serial.println("Held");
+//            Serial.println("Held fd");
             held[ix] = 0;
+          } else {
+            Serial.println("Pressed fd");
+            Serial.println(connector.sendAPFlightDirector());
           }
           break;
         case atPin:
-          if (currentStates[ix] == 1) {
-//            Serial.println("Pressed 8 at");
-          }
           if (held[ix] == 1) {
             //not yet implemented
-//            Serial.println("Held");
+//            Serial.println("Held at");
             held[ix] = 0;
+          } else {
+            Serial.println("Pressed at");
+            Serial.println("May have to use Joystick.pressButton(ix) instead");
           }
           break;
-        case swapPin:
-          if (currentStates[ix] == 1) {
-//            Serial.println("Pressed 9 swap");
-          }
+        case swap1Pin:
           if (held[ix] == 1) {
             //not yet implemented
-//            Serial.println("Held");
+//            Serial.println("Held swap1");
             held[ix] = 0;
+          } else {
+            Serial.println("Pressed swap1");
+            Serial.println(connector.sendSwapCom1());
           }
           break;
-        case 10:
-          if (currentStates[ix] == 1) {
-//            Serial.println("Pressed 10 UNASSIGNED");
-          }
+        case swap2Pin:
           if (held[ix] == 1) {
             //not yet implemented
-//            Serial.println("Held");
+//            Serial.println("Held swap2");
             held[ix] = 0;
+          } else {
+            Serial.println("Pressed swap2");
+            Serial.println(connector.sendSwapCom2());
           }
           break;
         case 11:
@@ -282,7 +303,7 @@ void processInputs() {
 //            Serial.println("Held");
             held[ix] = 0;
           } else {
-//            Serial.println("Sent FD toggle");
+            Serial.println("Sent FD toggle");
             Serial.println(connector.sendAPFlightDirector());
           }
           break;
