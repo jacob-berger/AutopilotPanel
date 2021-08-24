@@ -1,4 +1,4 @@
-#include <SoftTimers.h>
+//#include <SoftTimers.h>
 #include <Joystick.h>
 #include <BitsAndDroidsFlightConnector.h>
 #include "Button.h"
@@ -13,7 +13,7 @@ RotaryEncoder hdg(4, 5);
 RotaryEncoder alt(6, 7);
 RotaryEncoder vs(8, A0);
 
-SoftTimer pollTimer;
+//SoftTimer pollTimer;
 
 Joystick_ Joystick;
 
@@ -86,9 +86,9 @@ void setup() {
   isEncoderButton[1] = true;
   isEncoderButton[2] = true;
   isEncoderButton[3] = true;
-
-  pollTimer.setTimeOutTime(2000);
-  pollTimer.reset();
+//
+//  pollTimer.setTimeOutTime(2000);
+//  pollTimer.reset();
   
   Joystick.begin();
 }
@@ -100,23 +100,25 @@ void loop() {
 
 //    displayADCs();
 
+    Serial.println("Reading input");
     readInputs();    
+    Serial.println("Processing input");
     processInputs();
+    Serial.println("Processing encoders");
     processEncoders();
 
-    if (pollTimer.hasTimedOut()) {
-      retrieveVars();
-    }
+//    if (pollTimer.hasTimedOut()) {
+//      retrieveVars();
+//    }
 
 }
 
-void retrieveVars() {
-//  spdIn = ?????? Maybe use simconnect
-    hdgIn = connector.getApHeadingLock();
-    Serial.print("Heading: ");
-    Serial.print(hdgIn);
-    Serial.println(".");
-}
+//void retrieveVars() {
+////  spdIn = ?????? Maybe use simconnect
+//    com1ActiveIn = connector.getActiveCom1();
+//    Serial.println(com1ActiveIn);
+//    delay(100);
+//}
 
 void readInputs() {
   int numADCs = sizeof(adcs)/sizeof(adcs[0]);
