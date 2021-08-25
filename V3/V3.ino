@@ -6,7 +6,7 @@
 
 Adafruit_MCP3008 adc1;
 Adafruit_MCP3008 adc2;
-BitsAndDroidsFlightConnector connector(false);
+BitsAndDroidsFlightConnector connector(true);
 RotaryEncoder spd(2, 3);
 RotaryEncoder hdg(4, 5);
 RotaryEncoder alt(6, 7);
@@ -57,8 +57,8 @@ constexpr static const float c = 84.03;
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
-  Serial.begin(115200);
-  Serial.setTimeout(15);
+//  Serial.begin(115200);
+//  Serial.setTimeout(15);
   while (!Serial);
 
 //  Serial.println("MCP3008 simple test.");
