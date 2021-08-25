@@ -13,7 +13,7 @@ RotaryEncoder alt(6, 7);
 RotaryEncoder vs(8, A0);
 Joystick_ Joystick;
 
-static uint8_t inputThreshold = 800;
+#define inputThreshold (uint16_t)800
 Adafruit_MCP3008 adcs[2]; //only expecting 2 for now
 boolean lastStates[16]; //only assuming buttons from adcs
 boolean currentStates[16];
@@ -28,8 +28,9 @@ RotaryEncoder encoders[] = {spd, hdg, alt, vs};
 uint16_t lastTime[32];
 boolean isAP, isRad;
 uint16_t holdTime = 1200;
-static int pos[4];
-int spdIn, hdgIn, altIn, vsIn, locIn, appIn, apIn, fdIn, atIn;
+uint16_t pos[4];
+int spdIn, hdgIn, altIn, vsIn;
+boolean locIn, appIn, apIn, fdIn, atIn;
 float com1ActiveIn, com1StandbyIn, com2ActiveIn, com2StandbyIn; 
 
 // Define some constants.
@@ -55,26 +56,19 @@ constexpr static const float c = 84.03;
 #define swap2Pin 10
 #define modePin 11
 
+boolean fastPoll = 0;
+
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
-//  Serial.begin(115200);
-//  Serial.setTimeout(15);
   while (!Serial);
-
-//  Serial.println("MCP3008 simple test.");
-
-  // Hardware SPI (specify CS, use any available digital)
-  // Can use defaults if available, ex: UNO (SS=10) or Huzzah (SS=15)
-//  adc.begin();
-  // Feather 32u4 (SS=17) or M0 (SS=16), defaults SS not broken out, must specify
-  //adc.begin(10);  
-
-  // Software SPI (specify all, use any available digital)
+  
   // (sck, mosi, miso, cs);
   adc1.begin(13, 11, 12, 10);
   adc2.begin(13, 11, 12, 9);
   adcs[0] = adc1;
   adcs[1] = adc2;
+
+//  attachInterrupt(2, rotaryInterrupt, RISING);
   
   Joystick.begin();
 }
@@ -82,30 +76,29 @@ void setup() {
 void loop() {
 
 //  BITSANDDROIDSCONNECTOR
-    connector.dataHandling();
+  connector.dataHandling();
 
 //    displayADCs();
-
+//  while (fastPoll) {
+//    processEncoders();
+//    Serial.println("FastPoll");
+//  }
     readInputs();
     processInputs();
-//    processEncoders();
+    processEncoders();
+//    Serial.println("Slow");
+  
+  delay(10);
+}
 
-//    delay(1000);
-//    
-////TO BE MOVED
-//    static int pos = 0;
-//    rotary.tick();
-//
-//    int newPos = rotary.getPosition();
-//    if (pos != newPos) {
-//      Serial.print("pos:");
-//      Serial.print(newPos);
-//      Serial.print(" dir:");
-//      Serial.println((int)(rotary.getDirection()));
-//      pos = newPos;
+void rotaryInterrupt() {
+//  long lastEncoderTime = millis();
+//  do {
+//    boolean result = processEncoders();
+//    if (result) {
+//      lastEncoderTime = millis();
 //    }
-//
-    delay(100);
+//  } while (lastEncoderTime - millis() < 2000);
 }
 
 void retrieveVars() {
@@ -123,7 +116,7 @@ void readInputs() {
       int value = adcs[ix].readADC(iy);
       int button = (ix * 8) + iy;
       lastStates[button] = currentStates[button];
-      if ((value > inputThreshold && isEncoderButton[button] == false) || (value < inputThreshold && isEncoderButton[button] == true)) {
+      if ((value > inputThreshold && !isEncoderButton[button]) || (value < inputThreshold && isEncoderButton[button])) {
         if (lastStates[button] == false) {//button pressed
           lastTime[button] = millis();
         }
@@ -415,7 +408,11 @@ void processInputs() {
 }
 
 void processEncoders() {
-  for (int ix = 0; ix < sizeof(encoders)/sizeof(encoders[0]); ix++) {
+  boolean changed, timedOut = false;
+  long timeout = 2000;
+  long start = millis();
+  do {
+    for (int ix = 0; ix < sizeof(encoders)/sizeof(encoders[0]); ix++) {
     pos[ix] = 0;
     encoders[ix].tick();
 
@@ -458,6 +455,8 @@ void processEncoders() {
         Serial.println(pos[ix]);
         lastTime[ix] = millis();
         pos[ix] = newPos;
+        changed = true;
+        start = millis();
       } else if (dir < 0) {
         switch (ix) {
           case 0:
@@ -493,9 +492,19 @@ void processEncoders() {
         Serial.println(pos[ix]);
         lastTime[ix] = millis();
         pos[ix] = newPos;
+        changed = true;
+        start = millis();
+        } else {
+          changed = false;
+        }
+      } else {
+        changed = false;
       }
     }
-  }
+    fastPoll = changed;
+    timedOut = (millis ()- start < timeout);
+  } while (fastPoll && !timedOut);
+//  return changed;
 }
 
 void displayADCs() {
