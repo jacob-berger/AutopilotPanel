@@ -13,18 +13,17 @@ RotaryEncoder alt(6, 7);
 RotaryEncoder vs(8, A0);
 Joystick_ Joystick;
 
-
-int count = 0;
-int count1 = 0;
-int count2 = 0;
-int lastState1 = 0; //not pressed
-int lastState2 = 0;
-int inputThreshold = 800;
+static uint8_t inputThreshold = 800;
 Adafruit_MCP3008 adcs[2]; //only expecting 2 for now
 int lastStates[16]; //only assuming buttons from adcs
 int currentStates[16];
 int held[16];
-int isEncoderButton[16];
+boolean isEncoderButton[] = {
+                            true, true, true, true,
+                            false, false, false, false,
+                            false, false, false, false,
+                            false, false, false, false
+                            };
 RotaryEncoder encoders[] = {spd, hdg, alt, vs};
 long lastTime[32];
 boolean isAP, isRad;
@@ -72,13 +71,10 @@ void setup() {
 
   // Software SPI (specify all, use any available digital)
   // (sck, mosi, miso, cs);
-  adc1.begin(14, 10, 11, 9);
-  adc2.begin(14, 10, 11, 2);
+  adc1.begin(13, 11, 12, 10);
+  adc2.begin(13, 11, 12, 9);
   adcs[0] = adc1;
   adcs[1] = adc2;
-
-  pollTimer.setTimeOutTime(2000);
-  pollTimer.reset();
   
   Joystick.begin();
 }
@@ -88,10 +84,11 @@ void loop() {
 //  BITSANDDROIDSCONNECTOR
     connector.dataHandling();
 
+//    displayADCs();
+
     readInputs();
-    
     processInputs();
-    processEncoders();
+//    processEncoders();
 
 //    delay(1000);
 //    
@@ -126,7 +123,7 @@ void readInputs() {
       int value = adcs[ix].readADC(iy);
       int button = (ix * 8) + iy;
       lastStates[button] = currentStates[button];
-      if (value > inputThreshold) {
+      if ((value > inputThreshold && isEncoderButton[button] == false) || (value < inputThreshold && isEncoderButton[button] == true)) {
         if (lastStates[button] == 0) {//button pressed
           lastTime[button] = millis();
         }
@@ -205,9 +202,6 @@ void processInputs() {
           }
           break;
         case vsPin:
-          if (currentStates[ix] == 1) {
-//            Serial.println("Pressed 3 vs");
-          }
           if (held[ix] == 1) {
 //            not yet implemented
             Serial.println("Held vs");
@@ -226,9 +220,6 @@ void processInputs() {
           }
           break;
         case locPin:
-          if (currentStates[ix] == 1) {
-//            Serial.println("Pressed 4 loc");
-          }
           if (held[ix] == 1) {
             //not yet implemented
             Serial.println("Held loc");
@@ -245,9 +236,6 @@ void processInputs() {
           }
           break;
         case appPin:
-          if (currentStates[ix] == 1) {
-//            Serial.println("Pressed 5 app");
-          }
           if (held[ix] == 1) {
             //not yet implemented
             Serial.println("Held app");
@@ -264,9 +252,6 @@ void processInputs() {
           }
           break;
         case apPin:
-          if (currentStates[ix] == 1) {
-//            Serial.println("Pressed 6 ap");
-          }
           if (held[ix] == 1) {
             //not yet implemented
             Serial.println("Held ap");
@@ -283,9 +268,6 @@ void processInputs() {
           }
           break;
         case fdPin:
-          if (currentStates[ix] == 1) {
-//            Serial.println("Pressed 7 fd");
-          }
           if (held[ix] == 1) {
             //not yet implemented
             Serial.println("Held fd");
@@ -302,9 +284,6 @@ void processInputs() {
           }
           break;
         case atPin:
-          if (currentStates[ix] == 1) {
-//            Serial.println("Pressed 8 at");
-          }
           if (held[ix] == 1) {
             //not yet implemented
             Serial.println("Held at");
@@ -319,10 +298,7 @@ void processInputs() {
             Joystick.releaseButton(ix);
           }
           break;
-        case swapPin:
-          if (currentStates[ix] == 1) {
-//            Serial.println("Pressed 9 swap");
-          }
+        case swap1Pin:
           if (held[ix] == 1) {
             //not yet implemented
             Serial.println("Held swap1");
@@ -338,10 +314,7 @@ void processInputs() {
             Joystick.releaseButton(ix);
           }
           break;
-        case 10:
-          if (currentStates[ix] == 1) {
-//            Serial.println("Pressed 10 UNASSIGNED");
-          }
+        case swap2Pin:
           if (held[ix] == 1) {
             //not yet implemented
             Serial.println("Held swap2");
@@ -534,8 +507,7 @@ void displayADCs() {
     Serial.print(adc2.readADC(chan)); Serial.print("\t");
   }
 
-  Serial.print("["); Serial.print(count); Serial.println("]");
-  count++;
+  Serial.println();
   
   delay(1000);
 }
