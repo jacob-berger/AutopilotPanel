@@ -7,7 +7,7 @@
 Adafruit_MCP3008 adc1;
 Adafruit_MCP3008 adc2;
 BitsAndDroidsFlightConnector connector(true);
-RotaryEncoder spd(2, 3);
+RotaryEncoder spd(2, 3, RotaryEncoder::LatchMode::TWO03);
 RotaryEncoder hdg(4, 5);
 RotaryEncoder alt(6, 7);
 RotaryEncoder vs(8, A0);
@@ -28,7 +28,7 @@ RotaryEncoder encoders[] = {spd, hdg, alt, vs};
 uint16_t lastTime[32];
 boolean isAP, isRad;
 uint16_t holdTime = 1200;
-uint16_t pos[4];
+int pos[4];
 int spdIn, hdgIn, altIn, vsIn;
 boolean locIn, appIn, apIn, fdIn, atIn;
 float com1ActiveIn, com1StandbyIn, com2ActiveIn, com2StandbyIn; 
@@ -413,11 +413,12 @@ void processEncoders() {
   long start = millis();
   do {
     for (int ix = 0; ix < sizeof(encoders)/sizeof(encoders[0]); ix++) {
-    pos[ix] = 0;
     encoders[ix].tick();
 
     int newPos = encoders[ix].getPosition();
     if (pos[ix] != newPos) {
+      changed = true;
+      start = millis();
       long difference = millis() - lastTime[ix];
       int dir = (int)encoders[ix].getDirection();
       if (dir > 0) {
@@ -455,8 +456,6 @@ void processEncoders() {
         Serial.println(pos[ix]);
         lastTime[ix] = millis();
         pos[ix] = newPos;
-        changed = true;
-        start = millis();
       } else if (dir < 0) {
         switch (ix) {
           case 0:
@@ -492,18 +491,24 @@ void processEncoders() {
         Serial.println(pos[ix]);
         lastTime[ix] = millis();
         pos[ix] = newPos;
-        changed = true;
-        start = millis();
-        } else {
-          changed = false;
         }
       } else {
         changed = false;
       }
+
+//      int newPos = encoders[ix].getPosition();
+//      if (pos[ix] != newPos) {
+//        Serial.print("pos ");
+//        Serial.print(ix);
+//        Serial.print(": ");
+//        Serial.print(newPos);
+//        Serial.print(" dir:");
+//        Serial.println((int)(encoders[ix].getDirection()));
+//        pos[ix] = newPos;
+//      }
     }
-    fastPoll = changed;
-    timedOut = (millis ()- start < timeout);
-  } while (fastPoll && !timedOut);
+    timedOut = (millis() - start < 2000);
+  } while (!timedOut && changed);
 //  return changed;
 }
 
