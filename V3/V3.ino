@@ -86,27 +86,12 @@ void loop() {
     readInputs();
     processInputs();
     processEncoders();
-//    Serial.println("Slow");
+
+//    int radIn = connector.getIndicatedAirspeed();
+//    Serial.print("Fetched: ");
+//    Serial.println(radIn);
   
   delay(10);
-}
-
-void rotaryInterrupt() {
-//  long lastEncoderTime = millis();
-//  do {
-//    boolean result = processEncoders();
-//    if (result) {
-//      lastEncoderTime = millis();
-//    }
-//  } while (lastEncoderTime - millis() < 2000);
-}
-
-void retrieveVars() {
-//  spdIn = ?????? Maybe use simconnect
-    hdgIn = connector.getApHeadingLock();
-    Serial.print("Heading: ");
-    Serial.print(hdgIn);
-    Serial.println(".");
 }
 
 void readInputs() {
