@@ -1,4 +1,4 @@
-//#include <SoftTimers.h>
+#include <SoftTimers.h>
 #include <Joystick.h>
 #include <BitsAndDroidsFlightConnector.h>
 #include "Button.h"
@@ -7,34 +7,34 @@
 
 Adafruit_MCP3008 adc1;
 Adafruit_MCP3008 adc2;
-BitsAndDroidsFlightConnector connector(false);
-RotaryEncoder spd(2, 3);
+BitsAndDroidsFlightConnector connector(true);
+RotaryEncoder spd(2, 3, RotaryEncoder::LatchMode::TWO03);
 RotaryEncoder hdg(4, 5);
 RotaryEncoder alt(6, 7);
 RotaryEncoder vs(8, A0);
 
-//SoftTimer pollTimer;
+SoftTimer pollTimer;
 
 Joystick_ Joystick;
 
-
-int count = 0;
-int count1 = 0;
-int count2 = 0;
-int lastState1 = 0; //not pressed
-int lastState2 = 0;
-int inputThreshold = 800;
+#define inputThreshold (uint16_t)800
 Adafruit_MCP3008 adcs[2]; //only expecting 2 for now
-int lastStates[16]; //only assuming buttons from adcs
-int currentStates[16];
-int held[16];
-int isEncoderButton[16];
+boolean lastStates[16]; //only assuming buttons from adcs
+boolean currentStates[16];
+boolean held[16];
+boolean isEncoderButton[] = {
+                            true, true, true, true,
+                            false, false, false, false,
+                            false, false, false, false,
+                            false, false, false, false
+                            };
 RotaryEncoder encoders[] = {spd, hdg, alt, vs};
-long lastTime[32];
+uint16_t lastTime[32];
 boolean isAP, isRad;
-long holdTime = 1200;
-static int pos[4];
-int spdIn, hdgIn, altIn, vsIn, locIn, appIn, apIn, fdIn, atIn;
+uint16_t holdTime = 1200;
+int pos[4];
+int spdIn, hdgIn, altIn, vsIn;
+boolean locIn, appIn, apIn, fdIn, atIn;
 float com1ActiveIn, com1StandbyIn, com2ActiveIn, com2StandbyIn; 
 
 // Define some constants.
@@ -60,23 +60,12 @@ constexpr static const float c = 84.03;
 #define swap2Pin 10
 #define modePin 11
 
+boolean fastPoll = 0;
+
 void setup() {
-//  pinMode(LED_BUILTIN, OUTPUT);
-  Serial.begin(115200);
-  Serial.setTimeout(15);
-  isAP = true;
-  isRad = !isAP;
+  pinMode(LED_BUILTIN, OUTPUT);
   while (!Serial);
-
-//  Serial.println("MCP3008 simple test.");
-
-  // Hardware SPI (specify CS, use any available digital)
-  // Can use defaults if available, ex: UNO (SS=10) or Huzzah (SS=15)
-//  adc.begin();
-  // Feather 32u4 (SS=17) or M0 (SS=16), defaults SS not broken out, must specify
-  //adc.begin(10);  
-
-  // Software SPI (specify all, use any available digital)
+  
   // (sck, mosi, miso, cs);
   adc1.begin(13, 11, 12, 10);
   adc2.begin(13, 11, 12, 9);
@@ -89,6 +78,8 @@ void setup() {
 //
 //  pollTimer.setTimeOutTime(2000);
 //  pollTimer.reset();
+
+//  attachInterrupt(2, rotaryInterrupt, RISING);
   
   Joystick.begin();
 }
@@ -96,29 +87,28 @@ void setup() {
 void loop() {
 
 //  BITSANDDROIDSCONNECTOR
-    connector.dataHandling();
+  connector.dataHandling();
 
 //    displayADCs();
-
-    Serial.println("Reading input");
-    readInputs();    
-    Serial.println("Processing input");
+    readInputs();
     processInputs();
     Serial.println("Processing encoders");
     processEncoders();
 
-//    if (pollTimer.hasTimedOut()) {
-//      retrieveVars();
-//    }
-
+//    int radIn = connector.getIndicatedAirspeed();
+//    Serial.print("Fetched: ");
+//    Serial.println(radIn);
+  
+  delay(10);
 }
 
-//void retrieveVars() {
-////  spdIn = ?????? Maybe use simconnect
-//    com1ActiveIn = connector.getActiveCom1();
-//    Serial.println(com1ActiveIn);
-//    delay(100);
-//}
+void retrieveVars() {
+//  spdIn = ?????? Maybe use simconnect
+    hdgIn = connector.getApHeadingLock();
+    Serial.print("Heading: ");
+    Serial.print(hdgIn);
+    Serial.println(".");
+}
 
 void readInputs() {
   int numADCs = sizeof(adcs)/sizeof(adcs[0]);
@@ -127,18 +117,18 @@ void readInputs() {
       int value = adcs[ix].readADC(iy);
       int button = (ix * 8) + iy;
       lastStates[button] = currentStates[button];
-      if ((value > inputThreshold && isEncoderButton[button] == 0) || (isEncoderButton[button] == 1 && value < inputThreshold)) {//newer encoders do not require resistor to +5V, older ones do
-        if (lastStates[button] == 0) {//button pressed
+      if ((value > inputThreshold && !isEncoderButton[button]) || (value < inputThreshold && isEncoderButton[button])) {
+        if (lastStates[button] == false) {//button pressed
           lastTime[button] = millis();
         }
-        currentStates[button] = 1;
+        currentStates[button] = true;
       } else {
-        currentStates[button] = 0;
-        if (lastStates[button] == 1) {//button released
+        currentStates[button] = false;
+        if (lastStates[button] == true) {//button released
           long current = millis();
 //          Serial.println(current - lastTime[button]);
           if ((current - lastTime[button]) > 1000) {
-            held[button] = 1;
+            held[button] = true;
           }
         }
       }
@@ -148,11 +138,11 @@ void readInputs() {
 
 void processInputs() {
   //only send commands for changed states
-  for (int ix = 0; ix < sizeof(lastStates); ix++) {
-    if (currentStates[ix] < lastStates[ix]) { //only on release
+  for (int ix = 0; ix < sizeof(lastStates)/sizeof(lastStates[0]); ix++) {
+    if ((currentStates[ix] == false) && (lastStates[ix] == true)) { //only on release
       switch (ix) {
         case spdPin:
-          if (held[ix] == 1) {//holding for managed
+          if (held[ix] == true) {//holding for managed
             //not yet implemented
             Serial.println("Held spd");
             //TODO
@@ -160,7 +150,7 @@ void processInputs() {
             Joystick.pressButton(ix);
             delay(holdTime);
             Joystick.releaseButton(ix);
-            held[ix] = 0;
+            held[ix] = false;
           } else {
             Serial.println("Pressed spd");
             Serial.println(connector.sendAPAirspeedHold());
@@ -170,7 +160,7 @@ void processInputs() {
           }
           break;
         case hdgPin:
-          if (held[ix] == 1) {//holding for managed
+          if (held[ix] == true) {//holding for managed
             //not yet implemented
             Serial.println("Held hdg");
             //TODO
@@ -178,7 +168,7 @@ void processInputs() {
             Joystick.pressButton(ix);  
             delay(holdTime);
             Joystick.releaseButton(ix);
-            held[ix] = 0;
+            held[ix] = false;
           } else {
             Serial.println("Pressed hdg");
             Serial.println(connector.sendAPHeadingHold());
@@ -188,7 +178,7 @@ void processInputs() {
           }
           break;
         case altPin:
-          if (held[ix] == 1) {//holding for managed
+          if (held[ix] == true) {//holding for managed
             //not yet implemented
             Serial.println("Held alt");
             //TODO
@@ -196,7 +186,7 @@ void processInputs() {
 //            Joystick.pressButton(ix);
 //            delay(50);
 //            Joystick.releaseButton(ix);
-            held[ix] = 0;
+            held[ix] = false;
           } else {
             Serial.println("Pressed alt");
             Serial.println(connector.sendAPPanelAltitudeHold());
@@ -206,7 +196,7 @@ void processInputs() {
           }
           break;
         case vsPin:
-          if (held[ix] == 1) {
+          if (held[ix] == true) {
 //            not yet implemented
             Serial.println("Held vs");
             //TODO
@@ -214,7 +204,7 @@ void processInputs() {
             Joystick.pressButton(ix);
             delay(holdTime);
             Joystick.releaseButton(ix);
-            held[ix] = 0;
+            held[ix] = false;
           } else {
             Serial.println("Pressed vs");
             Serial.println(connector.sendAPVSHold());
@@ -224,13 +214,13 @@ void processInputs() {
           }
           break;
         case locPin:
-          if (held[ix] == 1) {
+          if (held[ix] == true) {
             //not yet implemented
             Serial.println("Held loc");
             Joystick.pressButton(ix);
             delay(holdTime);
             Joystick.releaseButton(ix);
-            held[ix] = 0;
+            held[ix] = false;
           } else {
             Serial.println("Pressed loc");
             Serial.println(connector.sendAPLocHold());
@@ -240,13 +230,13 @@ void processInputs() {
           }
           break;
         case appPin:
-          if (held[ix] == 1) {
+          if (held[ix] == true) {
             //not yet implemented
             Serial.println("Held app");
             Joystick.pressButton(ix);
             delay(holdTime);
             Joystick.releaseButton(ix);
-            held[ix] = 0;
+            held[ix] = false;
           } else {
             Serial.println("Pressed app");
             Serial.println(connector.sendAPAprHold());
@@ -256,13 +246,13 @@ void processInputs() {
           }
           break;
         case apPin:
-          if (held[ix] == 1) {
+          if (held[ix] == true) {
             //not yet implemented
             Serial.println("Held ap");
             Joystick.pressButton(ix);
             delay(holdTime);
             Joystick.releaseButton(ix);
-            held[ix] = 0;
+            held[ix] = false;
           } else {
             Serial.println("Pressed ap");
             Serial.println(connector.sendApMasterOn());
@@ -272,13 +262,13 @@ void processInputs() {
           }
           break;
         case fdPin:
-          if (held[ix] == 1) {
+          if (held[ix] == true) {
             //not yet implemented
             Serial.println("Held fd");
             Joystick.pressButton(ix);
             delay(holdTime);
             Joystick.releaseButton(ix);
-            held[ix] = 0;
+            held[ix] = false;
           } else {
             Serial.println("Pressed fd");
             Serial.println(connector.sendAPFlightDirector());
@@ -288,13 +278,13 @@ void processInputs() {
           }
           break;
         case atPin:
-          if (held[ix] == 1) {
+          if (held[ix] == true) {
             //not yet implemented
             Serial.println("Held at");
             Joystick.pressButton(ix);
             delay(holdTime);
             Joystick.releaseButton(ix);
-            held[ix] = 0;
+            held[ix] = false;
           } else {
             Serial.println("Pressed at");
             Joystick.pressButton(ix);
@@ -303,13 +293,13 @@ void processInputs() {
           }
           break;
         case swap1Pin:
-          if (held[ix] == 1) {
+          if (held[ix] == true) {
             //not yet implemented
             Serial.println("Held swap1");
             Joystick.pressButton(ix);
             delay(holdTime);
             Joystick.releaseButton(ix);
-            held[ix] = 0;
+            held[ix] = false;
           } else {
             Serial.println("Pressed swap1");
 //            Serial.println(connector.sendSwapCom1());
@@ -319,13 +309,13 @@ void processInputs() {
           }
           break;
         case swap2Pin:
-          if (held[ix] == 1) {
+          if (held[ix] == true) {
             //not yet implemented
             Serial.println("Held swap2");
             Joystick.pressButton(ix);
             delay(holdTime);
             Joystick.releaseButton(ix);
-            held[ix] = 0;
+            held[ix] = false;
           } else {
             Serial.println("Pressed swap2");
 //            Serial.println(connector.sendSwapCom2());
@@ -335,13 +325,13 @@ void processInputs() {
           }
           break;
         case modePin:
-          if (held[ix] == 1) {
+          if (held[ix] == true) {
             //not yet implemented
             Serial.println("Held mode");
             Joystick.pressButton(ix);
             delay(holdTime);
             Joystick.releaseButton(ix);
-            held[ix] = 0;
+            held[ix] = false;
           } else {
             isAP = !isAP;
             if (isAP) {
@@ -355,13 +345,13 @@ void processInputs() {
           }
           break;
         case 12:
-          if (held[ix] == 1) {
+          if (held[ix] == true) {
             //not yet implemented
             Serial.println("Held 12");
             Joystick.pressButton(ix);
             delay(holdTime);
             Joystick.releaseButton(ix);
-            held[ix] = 0;
+            held[ix] = false;
           } else {
             Joystick.pressButton(ix);
             delay(50);
@@ -369,13 +359,13 @@ void processInputs() {
           }
           break;
         case 13:
-          if (held[ix] == 1) {
+          if (held[ix] == true) {
             //not yet implemented
             Serial.println("Held 13");
             Joystick.pressButton(ix);
             delay(holdTime);
             Joystick.releaseButton(ix);
-            held[ix] = 0;
+            held[ix] = false;
           } else {
             Serial.println("Pressed 13");
             Joystick.pressButton(ix);
@@ -384,13 +374,13 @@ void processInputs() {
           }
           break;
         case 14:
-          if (held[ix] == 1) {
+          if (held[ix] == true) {
             //not yet implemented
             Serial.println("Held 14");
             Joystick.pressButton(ix);
             delay(holdTime);
             Joystick.releaseButton(ix);
-            held[ix] = 0;
+            held[ix] = false;
           } else {
             Serial.println("Pressed 14");
             Joystick.pressButton(ix);
@@ -399,13 +389,13 @@ void processInputs() {
           }
           break;
         case 15:
-          if (held[ix] == 1) {
+          if (held[ix] == true) {
             //not yet implemented
             Serial.println("Held 15");
             Joystick.pressButton(ix);
             delay(holdTime);
             Joystick.releaseButton(ix);
-            held[ix] = 0;
+            held[ix] = false;
           } else {
             Serial.println("Pressed 15");
             Joystick.pressButton(ix);
@@ -419,12 +409,17 @@ void processInputs() {
 }
 
 void processEncoders() {
-  for (int ix = 0; ix < sizeof(encoders)/sizeof(encoders[0]); ix++) {
-    pos[ix] = 0;
+  boolean changed, timedOut = false;
+  long timeout = 2000;
+  long start = millis();
+  do {
+    for (int ix = 0; ix < sizeof(encoders)/sizeof(encoders[0]); ix++) {
     encoders[ix].tick();
 
     int newPos = encoders[ix].getPosition();
     if (pos[ix] != newPos) {
+      changed = true;
+      start = millis();
       long difference = millis() - lastTime[ix];
       int dir = (int)encoders[ix].getDirection();
       if (dir > 0) {
@@ -497,9 +492,25 @@ void processEncoders() {
         Serial.println(pos[ix]);
         lastTime[ix] = millis();
         pos[ix] = newPos;
+        }
+      } else {
+        changed = false;
       }
+
+//      int newPos = encoders[ix].getPosition();
+//      if (pos[ix] != newPos) {
+//        Serial.print("pos ");
+//        Serial.print(ix);
+//        Serial.print(": ");
+//        Serial.print(newPos);
+//        Serial.print(" dir:");
+//        Serial.println((int)(encoders[ix].getDirection()));
+//        pos[ix] = newPos;
+//      }
     }
-  }
+    timedOut = (millis() - start < 2000);
+  } while (!timedOut && changed);
+//  return changed;
 }
 
 void displayADCs() {
@@ -511,8 +522,7 @@ void displayADCs() {
     Serial.print(adc2.readADC(chan)); Serial.print("\t");
   }
 
-  Serial.print("["); Serial.print(count); Serial.println("]");
-  count++;
+  Serial.println();
   
   delay(1000);
 }
