@@ -1,4 +1,3 @@
-#include <SoftTimers.h>
 #include <Joystick.h>
 #include <BitsAndDroidsFlightConnector.h>
 #include "Button.h"
@@ -9,11 +8,9 @@ Adafruit_MCP3008 adc1;
 Adafruit_MCP3008 adc2;
 BitsAndDroidsFlightConnector connector(true);
 RotaryEncoder spd(2, 3, RotaryEncoder::LatchMode::TWO03);
-RotaryEncoder hdg(4, 5);
-RotaryEncoder alt(6, 7);
-RotaryEncoder vs(8, A0);
-
-SoftTimer pollTimer;
+RotaryEncoder hdg(4, 5, RotaryEncoder::LatchMode::TWO03);
+RotaryEncoder alt(6, 7, RotaryEncoder::LatchMode::TWO03);
+RotaryEncoder vs(8, A0, RotaryEncoder::LatchMode::TWO03);
 
 Joystick_ Joystick;
 
@@ -33,19 +30,6 @@ uint16_t lastTime[32];
 boolean isAP, isRad;
 uint16_t holdTime = 1200;
 int pos[4];
-int spdIn, hdgIn, altIn, vsIn;
-boolean locIn, appIn, apIn, fdIn, atIn;
-float com1ActiveIn, com1StandbyIn, com2ActiveIn, com2StandbyIn; 
-
-// Define some constants.
-// at 500ms, there should be no acceleration.
-constexpr const unsigned long kAccelerationLongCutoffMillis = 500;
-// at 4ms, we want to have maximum acceleration
-constexpr const unsigned long kAccelerationShortCutffMillis = 8;
-// linear acceleration: incline
-constexpr static const float m = -0.16;
-// linear acceleration: y offset
-constexpr static const float c = 84.03;
 
 #define spdPin 0
 #define hdgPin 1
@@ -60,8 +44,6 @@ constexpr static const float c = 84.03;
 #define swap2Pin 10
 #define modePin 11
 
-boolean fastPoll = 0;
-
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   while (!Serial);
@@ -71,13 +53,7 @@ void setup() {
   adc2.begin(13, 11, 12, 9);
   adcs[0] = adc1;
   adcs[1] = adc2;
-  isEncoderButton[0] = true;
-  isEncoderButton[1] = true;
-  isEncoderButton[2] = true;
-  isEncoderButton[3] = true;
-//
-//  pollTimer.setTimeOutTime(2000);
-//  pollTimer.reset();
+
 
 //  attachInterrupt(2, rotaryInterrupt, RISING);
   
@@ -92,22 +68,9 @@ void loop() {
 //    displayADCs();
     readInputs();
     processInputs();
-    Serial.println("Processing encoders");
     processEncoders();
-
-//    int radIn = connector.getIndicatedAirspeed();
-//    Serial.print("Fetched: ");
-//    Serial.println(radIn);
   
   delay(10);
-}
-
-void retrieveVars() {
-//  spdIn = ?????? Maybe use simconnect
-    hdgIn = connector.getApHeadingLock();
-    Serial.print("Heading: ");
-    Serial.print(hdgIn);
-    Serial.println(".");
 }
 
 void readInputs() {
