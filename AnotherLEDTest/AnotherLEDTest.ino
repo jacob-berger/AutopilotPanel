@@ -22,7 +22,7 @@ void loop() {
 //  Serial.println(leds, BIN);
 //  updateShiftRegister();
 //  delay(500);
-  for (int ix = 0; ix < 8; ix++) {
+  for (int ix = 0; ix < 16; ix++) {
     bitSet(leds, ix);
     updateShiftRegister();
     Serial.println(leds, BIN);

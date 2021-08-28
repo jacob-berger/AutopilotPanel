@@ -24,7 +24,11 @@ int apAirspeed, apHeading, apAltitude, apVerticalSpeed;
 double com1Active, com1Standby, com2Active, com2Standby;
 
 short leds = 0;
-boolean state[16]; //Should only need 12
+
+//HARD CODED FOR TESTING LEDS
+boolean state[] = {1,0,1,0,0,0,0,0,0,0,0,0,1,1,1,1}; //Should only need 12
+
+
 BitsAndDroidsFlightConnector connector(false);
 
 void setup() 
@@ -53,7 +57,7 @@ void loop()
   connector.dataHandling();
 //  advanceWithButton();
   //get variable state from sim
-  getSimVariables();
+//  getSimVariables();
   updateLEDs();
 //  tft.fillScreen(ST77XX_BLACK);
 //  tft.setCursor(0, 0);
@@ -76,13 +80,13 @@ void updateLEDs() {
   tft.fillScreen(ST77XX_BLACK);
   tft.setCursor(0, 0);
   for (int ix = 0; ix < 16; ix++) {
+    if (ix % 4 == 0 && ix != 0) {
+      tft.println();
+    }
     tft.print(ix);
     tft.print(": ");
     tft.print(state[ix]);
     tft.print(" ");
-    if (ix % 4 == 0 && ix != 0) {
-      tft.println();
-    }
   }
   tft.println();
   tft.println(com1Active);
@@ -116,7 +120,7 @@ void getSimVariables() {
   state[5] = connector.getAPApproachHoldOn();
   state[6] = connector.getAPMasterOn();
   state[7] = connector.getAPFlightDirectorOn();
-  state[8] = connector.getAPAutothrottleArm();
+  state[8] = connector.getAPAutothrottleOn();
 //  state[9] = connector. MAYBE SET LIGHT BASED ON IF RADIO MODE ON
 //  state[10] = connector. MAYBE SET LIGHT BASED ON IF RADIO MODE ON
 //  state[11] = DIGITAL READ PIN FROM LEONARDO
