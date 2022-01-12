@@ -3,18 +3,19 @@
 #include <Adafruit_ST7735.h> // Hardware-specific library for ST7735
 #include <SPI.h>
 
-#define TFT_CS        11
-#define TFT_RST       9 // Or set to -1 and connect to Arduino RESET pin
-#define TFT_DC        10
-#define TFT_MOSI      12
-#define TFT_SCLK      13
+#define TFT_CS        4 //11
+#define TFT_RST       2 //9 // Or set to -1 and connect to Arduino RESET pin
+#define TFT_DC        3 //10
+#define TFT_MOSI      5// 12
+#define TFT_SCLK      6// 13
+#define BACKLIGHT     7
 Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 
-int latchPin = 5;
-int clockPin = 6;
-int dataPin = 4;
+int latchPin = 9;
+int clockPin = 8;
+int dataPin = 10;
 int numLEDs = 16;
-int buttonPin = 3;
+//int buttonPin = 3;
 boolean pressed = false;
 int count = 0;
 #define inputSize 30
@@ -32,7 +33,8 @@ void setup()
   pinMode(latchPin, OUTPUT);
   pinMode(dataPin, OUTPUT);  
   pinMode(clockPin, OUTPUT);
-  pinMode(buttonPin, INPUT_PULLUP);
+//  pinMode(buttonPin, INPUT_PULLUP);
+  pinMode(BACKLIGHT, OUTPUT);
 
   tft.initR(INITR_BLACKTAB);
   tft.setRotation(1);
@@ -42,6 +44,8 @@ void setup()
   tft.setCursor(0, 0);
   tft.setTextColor(ST7735_WHITE, ST7735_BLACK);
   delay(100);
+
+  digitalWrite(BACKLIGHT, HIGH);
   
   Serial.begin(115200);
   Serial.setTimeout(15);

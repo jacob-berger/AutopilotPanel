@@ -10,6 +10,9 @@
 #define TFT_SCLK      13
 Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 
+#define comLine 2
+#define airLine 4
+
 int latchPin = 5;
 int clockPin = 6;
 int dataPin = 4;
@@ -22,12 +25,14 @@ int count = 0;
 #define radioState 1
 int apAirspeed, apHeading, apAltitude, apVerticalSpeed;
 double com1Active, com1Standby, com2Active, com2Standby;
+boolean changed = false;
+boolean firstRun = true;
 
 short leds = 0;
 
 //HARD CODED FOR TESTING LEDS
-boolean state[] = {1,0,1,0,0,0,0,0,0,0,0,0,1,1,1,1}; //Should only need 12
-
+//boolean state[] = {1,0,1,0,0,0,0,0,0,0,0,0,1,1,1,1};
+boolean state[16]; //Should only need 12
 
 BitsAndDroidsFlightConnector connector(false);
 
@@ -45,6 +50,13 @@ void setup()
   tft.setTextWrap(false);
   tft.setCursor(0, 0);
   tft.setTextColor(ST7735_WHITE, ST7735_BLACK);
+
+
+  tft.println("TEST");
+  tft.println("TEST");
+
+
+  
   delay(100);
   
   Serial.begin(115200);
@@ -57,8 +69,10 @@ void loop()
   connector.dataHandling();
 //  advanceWithButton();
   //get variable state from sim
-//  getSimVariables();
+  getSimVariables();
   updateLEDs();
+  updateComs();
+  updateAirData();
 //  tft.fillScreen(ST77XX_BLACK);
 //  tft.setCursor(0, 0);
 //  delay(100);
@@ -68,29 +82,50 @@ void loop()
 //  tft.println(connector.getAPFlightDirectorOn());
 //  tft.println(connector.getAPMasterOn());
 //  tft.println(connector.getAPAvailable());
-  delay(1000);
+  delay(500);
+
+  firstRun = false;
+}
+
+void updateAirData() {
+  tft.setCursor(0, airLine * 8);
+  String padding = "            ";
+  tft.println(connector.getIndicatedAirspeed() + padding);
+  tft.println(connector.getIndicatedHeading() + padding);
+  tft.println(connector.getIndicatedAltitude() + padding);
+  tft.println(connector.getTrueVerticalSpeed() + padding);
+}
+
+void updateComs() {
+  //only update the specific lines
+  tft.setCursor(0, comLine * 8);
+  String padding = "            ";
+  tft.println(com1Active + padding);
+  tft.println(com1Standby + padding);
 }
 
 void updateLEDs() {
-  for (int ix = 4; ix < sizeof(state)/sizeof(state[0]); ix++) {
-    //start at loc since spd, hdg, alt, vs have no light
-    setLED(ix, state[ix]);
-  }
-  updateShiftRegister();
-  tft.fillScreen(ST77XX_BLACK);
-  tft.setCursor(0, 0);
-  for (int ix = 0; ix < 16; ix++) {
-    if (ix % 4 == 0 && ix != 0) {
-      tft.println();
+  if (changed || firstRun) {
+    for (int ix = 4; ix < sizeof(state)/sizeof(state[0]); ix++) {
+      //start at loc since spd, hdg, alt, vs have no light
+      setLED(ix, state[ix]);
     }
-    tft.print(ix);
-    tft.print(": ");
-    tft.print(state[ix]);
-    tft.print(" ");
+    updateShiftRegister();
+//    tft.fillScreen(ST77XX_BLACK);
+//    tft.setCursor(0, 0);
+//    for (int ix = 0; ix < 16; ix++) {
+//      if (ix % 4 == 0 && ix != 0) {
+//        tft.println();
+//      }
+//      tft.print(ix);
+//      tft.print(": ");
+//      tft.print(state[ix]);
+//      tft.print(" ");
+//    }
+//    tft.println();
+
+    changed = false;
   }
-  tft.println();
-  tft.println(com1Active);
-  tft.println(com1Standby);
 }
 
 void getSimVariables() {
@@ -129,14 +164,43 @@ void getSimVariables() {
 //  state[14] = connector.
 //  state[15] = connector.
 
+  long temp;
 //  apAirspeed CURRENTLY NOT AVAILABLE THROUGH CONNECTOR
-  apHeading = connector.getApHeadingLock();
-  apAltitude = connector.getApAltLock();
-  apVerticalSpeed = connector.getApVerticalSpeed();
-  com1Active = connector.getActiveCom1();
-  com1Standby = connector.getStandbyCom1();
-  com2Active = connector.getActiveCom2();
-  com2Standby = connector.getStandbyCom2();
+  temp = connector.getApHeadingLock();
+  if (apHeading != temp) {
+    apHeading = temp;
+    changed = true;
+  }
+  temp = connector.getApAltLock();
+  if (apAltitude != temp) {
+    apAltitude = temp;
+    changed = true;
+  }
+  temp = connector.getApVerticalSpeed();
+  if (apVerticalSpeed != temp) {
+    apVerticalSpeed = temp;
+    changed = true;
+  }
+  temp = connector.getActiveCom1();
+  if (com1Active != temp) {
+    com1Active = temp;
+    changed = true;
+  }
+  temp = connector.getStandbyCom1();
+  if (com1Standby != temp) {
+    com1Standby = temp;
+    changed = true;
+  }
+  temp = connector.getActiveCom2();
+  if (com2Active != temp) {
+    com2Active = temp;
+    changed = true;
+  }
+  temp = connector.getStandbyCom2();
+  if (com2Standby != temp) {
+    com2Standby = temp;
+    changed = true;
+  }
 }
 
 void advanceWithButton() {

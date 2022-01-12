@@ -9,7 +9,7 @@
 
 // create a global shift register object
 // parameters: <number of shift registers> (data pin, clock pin, latch pin)
-ShiftRegister74HC595<2> sr(4, 6, 5);
+ShiftRegister74HC595<2> sr(10, 8, 9);
 #define resetPin 2
  
 void setup() { 

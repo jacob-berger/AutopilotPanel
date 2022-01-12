@@ -1,6 +1,6 @@
-#define latchPin 5
-#define clockPin 6
-#define dataPin 4
+#define latchPin 9
+#define clockPin 8
+#define dataPin 10
 
 byte leds = 0;
 int count = 0;
