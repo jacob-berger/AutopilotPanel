@@ -74,19 +74,19 @@ void readInputs() {
 
   //TODO: change hold behavior from time to value incrementing
   //read tac switches
-  for (int ix = 0; ix < numTacSwitches; ix++) {
-      int pressed = !mcp.digitalRead(ix); //low is pressed
+  for (uint8_t ix = 0; ix < numTacSwitches; ix++) {
+      uint8_t pressed = !mcp.digitalRead(ix); //low is pressed
       lastStates[ix] = currentStates[ix];
       if (pressed) {
         if (lastStates[ix] == false) {//button pressed
-          lastTime[ix] = millis()%100;
+          lastTime[ix] = millis()/100;
           Serial.println(lastTime[ix]);
         }
         currentStates[ix] = true;
       } else {
         currentStates[ix] = false;
         if (lastStates[ix] == true) {//button released
-          uint8_t current = millis()%100;
+          uint8_t current = millis()/100;
           Serial.println(current);
           Serial.println(current - lastTime[ix]);
           if ((current - lastTime[ix]) > 1000) {
@@ -97,8 +97,8 @@ void readInputs() {
   }
 
   //read encoders
-  for (int ix = 0; ix < numEncoders; ix++) {
-    int pressed = !digitalRead(encButtonPins[ix]);
+  for (uint8_t ix = 0; ix < numEncoders; ix++) {
+    uint8_t pressed = !digitalRead(encButtonPins[ix]);
     lastStates[numTacSwitches + ix] = currentStates[numTacSwitches + ix];
       if (pressed) {
         if (lastStates[numTacSwitches + ix] == false) {//button pressed
@@ -121,7 +121,7 @@ void readInputs() {
 void processInputs() {
   uint16_t holdTime = 1200;
   //only send commands for changed states
-  for (int ix = 0; ix < sizeof(lastStates)/sizeof(lastStates[0]); ix++) {
+  for (uint8_t ix = 0; ix < sizeof(lastStates)/sizeof(lastStates[0]); ix++) {
     if ((currentStates[ix] == false) && (lastStates[ix] == true)) { //only on release
       switch (ix) {
         case locPin:
@@ -416,15 +416,15 @@ void processEncoders() {
   long timeout = 2000;
   long start = millis();
   do {
-    for (int ix = 0; ix < sizeof(encoders)/sizeof(encoders[0]); ix++) {
+    for (uint8_t ix = 0; ix < sizeof(encoders)/sizeof(encoders[0]); ix++) {
     encoders[ix].tick();
 
-    int newPos = encoders[ix].getPosition();
+    uint8_t newPos = encoders[ix].getPosition();
     if (pos[ix] != newPos) {
       changed = true;
       start = millis();
       long difference = millis() - lastTime[ix];
-      int dir = (int)encoders[ix].getDirection();
+      uint8_t dir = (uint8_t)encoders[ix].getDirection();
       if (dir > 0) {
         switch (ix) {
           case 0:
@@ -507,7 +507,7 @@ void processEncoders() {
 }
 
 void displayMCPs() {
-  for (int ix = 0; ix < 16; ix++) {
+  for (uint8_t ix = 0; ix < 16; ix++) {
     if (!mcp.digitalRead(ix)) { //low when pressed
       Serial.println(ix);
     }
